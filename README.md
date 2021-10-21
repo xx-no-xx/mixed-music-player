@@ -7,8 +7,8 @@
 路径
 组别（数字标识）
 
-e.g.
-C:\Users\gassq\Desktop\114567630-1-208.mp3
-99824             
-C:\Users\gassq\Desktop\goddhere.mp3
-99824             
+e.g. (换行)
+C:\Users\gassq\Desktop\114567630-1-208.mp3 (换行)
+99824  (换行)  
+C:\Users\gassq\Desktop\goddhere.mp3  (换行)
+99824     (换行)      
