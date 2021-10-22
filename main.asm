@@ -17,12 +17,17 @@ includelib kernel32.lib
 includelib comdlg32.lib
 
 ;---------------- control -------------
-IDD_DIALOG 	equ	101
+IDD_DIALOG 			equ	101
+IDD_GROUP_MANAGE	equ 103
 IDC_FILE_SYSTEM 	equ	1001
+IDC_MANAGE_CURRENT_GROUP       equ  1012
+IDC_ALL_GROUP_LIST             equ  1013
+IDC_CURRENT_GROUP_LIST         equ  1015
+
 
 ;---------------- process -------------
-DO_NOTHING	equ 0
-DEFAULT_SONG_GROUP equ 99824
+DO_NOTHING			equ 0
+DEFAULT_SONG_GROUP  equ 99824
 
 ;---------------- function -------------
 DialogMain proto, ; ¶Ô»°¿òÖ÷Âß¼­
@@ -41,6 +46,15 @@ AddSingleSongOFN proto,  ; add ofn's song into songGroup
 
 GetGroupDetailInStr proto,
 	songGroup : dword
+
+StartGroupManage proto,
+	hWin : dword
+
+GroupManageMain proto,
+	hWin : dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
 
 ;==================== DATA =======================
 .data
@@ -73,6 +87,7 @@ testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;-------------------------------------------------- end for test
 
 hInstance DWORD ?
+hGroupManager dword ?
 
 ;=================== CODE =========================
 .code
@@ -94,9 +109,14 @@ DialogMain proc,
 	.elseif	uMsg == WM_COMMAND
 		.if wParam == IDC_FILE_SYSTEM
 			invoke ImportSingleFile, hWin
+		.elseif wParam == IDC_MANAGE_CURRENT_GROUP
+			invoke StartGroupManage, hWin
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
+		.if hGroupManager != 0
+			invoke EndDialog, hGroupManager, 0
+		.endif
 	.else
 	.endif
 
@@ -167,5 +187,34 @@ GetGroupDetailInStr proc,
 	invoke dw2a, songGroup, addr groupDetailStr
 	ret
 GetGroupDetailInStr endp
+
+StartGroupManage proc,
+	hWin : dword
+	invoke DialogBoxParam, hInstance, IDD_GROUP_MANAGE, 0, addr GroupManageMain, 0
+	ret
+StartGroupManage endp
+
+GroupManageMain proc,
+	hWin : dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
+
+	.if	uMsg == WM_INITDIALOG
+		push hWin
+		pop hGroupManager
+		; do something
+	.elseif	uMsg == WM_COMMAND
+	.elseif	uMsg == WM_CLOSE
+		mov hGroupManager, 0
+		invoke EndDialog,hWin,0
+	.else
+	.endif
+
+	xor eax, eax ; eax = 0
+	ret
+GroupManageMain endp
+
+
 
 END WinMain
