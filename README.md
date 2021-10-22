@@ -7,6 +7,9 @@
 组别（数字标识）
 路径
 
+长度分别被补全为maxGroupDetailLength, maxFileLength; 便于读取时读取。
+注意应该多读取一个换行符
+
 如果一首歌属于多个组，它需要多次存储
 
 e.g.
