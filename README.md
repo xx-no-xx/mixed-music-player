@@ -4,11 +4,22 @@
 以如下的格式：
 每个歌曲目前包括两行：
 
-路径
 组别（数字标识）
+路径
 
-e.g. (换行)
-C:\Users\gassq\Desktop\114567630-1-208.mp3 (换行)
-99824  (换行)  
-C:\Users\gassq\Desktop\goddhere.mp3  (换行)
-99824     (换行)      
+如果一首歌属于多个组，它需要多次存储
+
+e.g.
+
+99824  
+
+C:\Users\gassq\Desktop\114567630-1-208.mp3 
+
+99824 
+
+C:\Users\gassq\Desktop\goddhere.mp3  
+
+3231         
+
+C:\Users\gassq\Desktop\114567630-1-208.mp3 
+
