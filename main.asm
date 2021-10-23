@@ -18,13 +18,18 @@ includelib comdlg32.lib
 ;---------------- control -------------
 IDD_DIALOG 			equ	101 ; 主播放对话框
 IDD_GROUP_MANAGE	equ 103 ; 管理歌单对话框
+IDD_DIALOG_ADD_NEW_GROUP		equ 105 ; 加入新歌单的对话框
+
 IDC_FILE_SYSTEM 	equ	1001 ; 导入歌单的按钮
 IDC_MANAGE_CURRENT_GROUP       equ  1012 ; 进入管理歌单对话框的按钮
-IDC_ALL_GROUP_LIST             equ  1013 ; TODO
-IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO
+IDC_ALL_GROUP_LIST             equ  1013 ; TODO - manage
+IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO - manage
 IDC_MAIN_GROUP				   equ  1017 ; 展示当前选择歌单的所有歌曲
 IDC_GROUPS						equ 1009 ; 选择当前歌单
 IDC_ADD_NEW_GROUP				equ 1023; 加入新的歌单
+IDC_NEW_GROUP_NAME				equ 1025 ; 输入新歌单的名称
+IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; 确认加入新的歌单
+
 
 
 ;---------------- process -------------
@@ -101,7 +106,8 @@ GetAllGroups proto, ; 查询所有的group
 	hWin : dword
 ; TODO
 
-AddNewGroup proto ; 加入一个新的group
+AddNewGroup proto, ; 加入一个新的group
+	hWin : dword
 ; TODO
 
 DeleteOldGroup proto ; 删除一个group， 但不会删除其中的歌曲
@@ -114,6 +120,16 @@ DeleteOldGroup proto ; 删除一个group， 但不会删除其中的歌曲
 GetInputGroupName proto, ; 从用户的输入获取readGroupName
 	readGroupName : dword 
 ; todo
+
+StartAddNewGroup proto
+
+NewGroupMain proto, ; 新增歌单的对话框主程序
+	hWin: dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
+
+
 	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
@@ -139,6 +155,7 @@ ofnTitle BYTE '导入音乐', 0
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
 hInstance dword ?
 hGroupManager dword ?
+hNewGroup dword ?
 
 ; +++++++++++++++配置信息+++++++++++(因为测试而注释)
 ;songData BYTE ".\data.txt", 0
@@ -195,13 +212,17 @@ DialogMain proc,
 		.elseif wParam == IDC_GROUPS
 			invoke SelectGroup, hWin ; TODO
 		.elseif wParam == IDC_ADD_NEW_GROUP
-			invoke AddNewGroup
+			invoke StartAddNewGroup
+;			invoke AddNewGroup
 			invoke ShowMainDialogView, hWin
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
 		.if hGroupManager != 0
 			invoke EndDialog, hGroupManager, 0
+		.endif
+		.if hNewGroup != 0
+			invoke EndDialog, hNewGroup, 0
 		.endif
 	.else
 	.endif
@@ -407,7 +428,9 @@ SelectGroup proc,
 	ret
 SelectGroup endp
 
-AddNewGroup proc
+AddNewGroup proc,
+	hWin : dword
+
 	local handler_saved : dword
 	local BytesWritten : dword
 
@@ -418,6 +441,7 @@ AddNewGroup proc
 	invoke SetFilePointer, handler, 0, 0, FILE_END
 
 	invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr
+;	invoke  
 	invoke GetInputGroupName, addr readGroupNameStr
 
 ;	users can modify add name
@@ -474,5 +498,36 @@ GetInputGroupName proc,
 	rep	movsb
 	ret
 GetInputGroupName endp
+
+StartAddNewGroup proc
+	invoke DialogBoxParam, hInstance, IDD_DIALOG_ADD_NEW_GROUP, 0, addr NewGroupMain, 0
+	ret
+StartAddNewGroup endp
+
+NewGroupMain proc,
+	hWin : dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
+
+	.if	uMsg == WM_INITDIALOG
+		push hWin
+		pop hNewGroup
+;		invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, 
+		; do something
+	.elseif	uMsg == WM_COMMAND
+		.if wParam == IDC_BUTTON_ADD_NEW_GROUP
+			invoke AddNewGroup, hWin
+		.endif
+	.elseif	uMsg == WM_CLOSE
+		mov hNewGroup, 0
+		invoke EndDialog,hWin,0
+	.else
+	.endif
+
+	xor eax, eax ; eax = 0
+	ret
+NewGroupMain endp
+
 
 END WinMain
