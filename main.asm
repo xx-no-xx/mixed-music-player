@@ -33,8 +33,10 @@ DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号
 
 MAX_FILE_LEN equ 8000 ; 最长文件长度
 MAX_GROUP_DETAIL_LEN equ 64 ; 组别编号的最长长度
-MAX_GROUP_NAME_LEN equ 10 ; 歌单名称的最长长度
+MAX_GROUP_NAME_LEN equ 20 ; 歌单名称的最长长度
 MAX_GROUP_SONG equ 50 ; 歌单内歌曲的最大数
+
+; 实际最大LEN应该-1， 这是因为str最后需要为0，否则输出时会跨越到别的存储区域。
 
 SAVE_TO_MAIN_DIALOG_GROUP		equ 1 ; 主界面展示用：保存至当前歌单
 SAVE_TO_TARGET_GROUP		equ 2 ; 歌曲管理用：保存至管理页的当前歌单
@@ -108,6 +110,10 @@ DeleteOldGroup proto ; 删除一个group， 但不会删除其中的歌曲
 ; TODO
 ; DeleteSongFromCurrentGroup proto, 
 ;	hWin : dword 
+
+GetInputGroupName proto, ; 从用户的输入获取readGroupName
+	readGroupName : dword 
+; todo
 	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
@@ -146,7 +152,10 @@ currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 buffer byte 0
 
-readGroupNameStr byte MAX_GROUP_NAME_LEN dup("-")
+readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
+
+inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
+; to change "1" -> 0
 
 ; ++++++++++++++测试专用+++++++++++++ 
 ; ++++++++请根据自己的机器路径修改+++++++++
@@ -187,6 +196,7 @@ DialogMain proc,
 			invoke SelectGroup, hWin ; TODO
 		.elseif wParam == IDC_ADD_NEW_GROUP
 			invoke AddNewGroup
+			invoke ShowMainDialogView, hWin
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
@@ -353,7 +363,7 @@ CollectSongPath proc,
 	
 	mov	esi, songPath
 	mov	edi, targetPath
-	mov	ecx, MAX_FILE_LEN
+	mov	ecx, MAX_FILE_LEN - 1
 	cld
 	rep movsb
 	ret
@@ -406,14 +416,16 @@ AddNewGroup proc
 	mov		handler_saved, eax
 
 	invoke SetFilePointer, handler, 0, 0, FILE_END
-; todo
-;	invoke  RtlZeroMemory, addr readGroupName, sizeof readGroupName
+
+	invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr
+	invoke GetInputGroupName, addr readGroupNameStr
+
 ;	users can modify add name
 	invoke GetGroupDetailInStr, eax
 ; todo : add limit to id so that they are not equal
 
 	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
-	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWritten, NULL
+	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
 
 	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
 	invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
@@ -424,7 +436,6 @@ AddNewGroup endp
 
 GetAllGroups proc,
 	hWin : dword
-; TODO
 
 	local BytesRead : dword
 	local handler_saved : dword
@@ -452,5 +463,16 @@ END_READ:
 	invoke CloseHandle, handler
 	ret
 GetAllGroups endp
+
+GetInputGroupName proc,
+	targetStr : dword
+; todo
+	mov esi, offset inputGroupNameStr
+	mov	edi, targetStr
+	mov	ecx, MAX_GROUP_NAME_LEN - 1
+	cld
+	rep	movsb
+	ret
+GetInputGroupName endp
 
 END WinMain
