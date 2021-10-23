@@ -6,10 +6,11 @@
 #define IDD_GROUP_MANAGE                103
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_COMBO1                      1009
-#define IDC_MANAGE_CURRENT_GROUP        1012 // button
-#define IDC_MANAGE_ALL_GROUP            1013 // 管理页面的左侧全部歌曲list
-#define IDC_MANAGE_TARGET_GROUP         1015 // 管理页面的右侧全部歌曲list
-#define IDC_MAIN_GROUP                  1017 // 主对话框的当前播放列表页
+#define IDC_GROUPS                      1009
+#define IDC_MANAGE_CURRENT_GROUP        1012
+#define IDC_MANAGE_ALL_GROUP            1013
+#define IDC_MANAGE_TARGET_GROUP         1015
+#define IDC_MAIN_GROUP                  1017
 
 // Next default values for new objects
 // 

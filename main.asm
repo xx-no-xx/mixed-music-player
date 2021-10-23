@@ -1,5 +1,4 @@
 .386
-
 .model flat, stdcall
 option casemap:none
 
@@ -23,7 +22,8 @@ IDC_FILE_SYSTEM 	equ	1001 ; 导入歌单的按钮
 IDC_MANAGE_CURRENT_GROUP       equ  1012 ; 进入管理歌单对话框的按钮
 IDC_ALL_GROUP_LIST             equ  1013 ; TODO
 IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO
-IDC_MAIN_GROUP				   equ  1017 ; TODO
+IDC_MAIN_GROUP				   equ  1017 ; 展示当前选择歌单的所有歌曲
+IDC_GROUPS						equ 1009 ; 选择当前歌单
 
 
 ;---------------- process -------------
@@ -64,7 +64,7 @@ GroupManageMain proto, ; TODO : 管理当前歌单的主逻辑
 	wParam : dword,
 	lParam : dword
 
-GetCurrentGroupSong proto ; TODO : 更新currentPlaySong的歌曲信息
+GetCurrentGroupSong proto ; TODO : 更新currentGroupSongs的歌曲信息
 
 GetTargetGroupSong proto, ; TODO : 获得songGroup的所有歌曲信息
 	songGroup : dword,
@@ -72,7 +72,7 @@ GetTargetGroupSong proto, ; TODO : 获得songGroup的所有歌曲信息
 	; TODO : 制定被保存在哪一个内部结构里
 
 song struct ; 歌曲信息结构体
-	path byte 1000 dup(0)
+	path byte MAX_FILE_LEN dup(0)
 ;	songname byte 10 dup(0) ; TODO: 歌曲名称
 ; TODO : 其他歌曲信息
 song ends
@@ -81,12 +81,8 @@ CollectSongPath proto, ; 将songPath复制到对应的targetPath中去
 	songPath : dword,
 	targetPath : dword
 
-
-ShowMainDialog proto,
+ShowMainDialogView proto,
 	hWin : dword
-
-
-
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -94,14 +90,15 @@ ShowMainDialog proto,
 handler HANDLE ? ; 文件句柄
 divideLine byte 0ah ; 换行divideLine
 
-currentPlaySong song <> ; 目前正在播放的歌曲信息
+currentPlaySingleSong song <> ; 目前正在播放的歌曲信息
+
 currentPlayGroup dword DEFAULT_SONG_GROUP ; 目前正在播放的歌单编号
 groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; 目前正在播放的歌单编号的str格式。 需要访问GetGroupDetailInStr以更新
 
 ; 歌单分为自定义歌单和默认歌单。默认歌单包括全部歌曲。
 
 numCurrentGroupSongs dword 0 ; 当前播放歌单的歌曲数量
-currentGroupSongs song MAX_GROUP_SONG dup(<>) ; 当前播放歌单的所有歌曲信息
+currentGroupSongs song MAX_GROUP_SONG dup(<"#">) ; 当前播放歌单的所有歌曲信息
 
 ; ++++++++++++++导入文件OPpenFileName结构++++++++++++++
 ofn OPENFILENAME <>
@@ -149,21 +146,18 @@ DialogMain proc,
 	lParam : dword
 
 	.if	uMsg == WM_INITDIALOG
-		; ++++++++++ only for test ++++++++++
-		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
-		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
-		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
-		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
-		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
-		; ++++++++++ only for test ++++++++++
+		invoke ShowMainDialogView, hWin
 		; do something
 	.elseif	uMsg == WM_COMMAND
 		.if wParam == IDC_FILE_SYSTEM
 			invoke ImportSingleFile, hWin
+			invoke ShowMainDialogView, hWin
 		.elseif wParam == IDC_MANAGE_CURRENT_GROUP
 			invoke StartGroupManage, hWin
+			invoke ShowMainDialogView, hWin
+		.elseif wParam == IDC_GROUPS
+		;	invoke SelectGroup, hWin ; TODO
 		.endif
-		invoke GetCurrentGroupSong
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
 		.if hGroupManager != 0
@@ -282,14 +276,17 @@ GetTargetGroupSong proc,
 
 	LOCAL counter : dword
 
+	mov		eax, songGroup
+
 	invoke GetGroupDetailInStr, songGroup
 
-	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP
-		mov	 esi, offset currentPlaySong
-	.endif
 
     invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
 	mov		handler, eax
+
+	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP
+		mov	 esi, offset currentGroupSongs
+	.endif
 
 	mov	counter, 0
 REPEAT_READ:
@@ -306,7 +303,7 @@ REPEAT_READ:
 	.if eax == songGroup
 		push esi
 		invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path
-		pop	 esi
+		pop esi
 		add	esi, SIZE song
 		inc counter
 	.endif
@@ -326,19 +323,43 @@ GetTargetGroupSong endp
 CollectSongPath proc,
 	songPath : dword,
 	targetPath : dword
-
+	
 	mov	esi, songPath
 	mov	edi, targetPath
-	mov	ecx, MAX_FILE_LEN 
+	mov	ecx, MAX_FILE_LEN
+	cld
 	rep movsb
-
-
 	ret
+
 CollectSongPath endp
 
 ShowMainDialogView proc,
 	hWin : dword
 
+	LOCAL	counter : dword
+
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0
+	invoke GetCurrentGroupSong
+
+	push numCurrentGroupSongs
+	pop	 counter
+
+	mov		esi, offset currentGroupSongs
+
+PRINT_LIST:
+	.if counter == 0
+		jmp END_PRINT
+	.endif
+
+	push esi
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr (song ptr [esi]).path 
+	pop esi
+	add		esi, size song
+	dec counter
+	jmp PRINT_LIST
+
+END_PRINT:
+	ret
 ShowMainDialogView endp
 
 END WinMain
