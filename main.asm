@@ -17,13 +17,9 @@ includelib comdlg32.lib
 
 ;---------------- control -------------
 IDD_DIALOG 			equ	101 ; Ö÷²¥·Å¶Ô»°¿ò
-IDD_GROUP_MANAGE	equ 103 ; ¹ÜÀí¸èµ¥¶Ô»°¿ò
 IDD_DIALOG_ADD_NEW_GROUP		equ 105 ; ¼ÓÈëÐÂ¸èµ¥µÄ¶Ô»°¿ò
 
 IDC_FILE_SYSTEM 	equ	1001 ; µ¼Èë¸èµ¥µÄ°´Å¥
-IDC_MANAGE_CURRENT_GROUP       equ  1012 ; ½øÈë¹ÜÀí¸èµ¥¶Ô»°¿òµÄ°´Å¥
-IDC_ALL_GROUP_LIST             equ  1013 ; TODO - manage
-IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO - manage
 IDC_MAIN_GROUP				   equ  1017 ; Õ¹Ê¾µ±Ç°Ñ¡Ôñ¸èµ¥µÄËùÓÐ¸èÇú
 IDC_GROUPS						equ 1009 ; Ñ¡Ôñµ±Ç°¸èµ¥
 IDC_ADD_NEW_GROUP				equ 1023; ¼ÓÈëÐÂµÄ¸èµ¥
@@ -37,7 +33,7 @@ DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
 DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ
 
 MAX_FILE_LEN equ 8000 ; ×î³¤ÎÄ¼þ³¤¶È
-MAX_GROUP_DETAIL_LEN equ 64 ; ×é±ð±àºÅµÄ×î³¤³¤¶È
+MAX_GROUP_DETAIL_LEN equ 32 ; ×é±ð±àºÅµÄ×î³¤³¤¶È
 MAX_GROUP_NAME_LEN equ 20 ; ¸èµ¥Ãû³ÆµÄ×î³¤³¤¶È
 MAX_GROUP_SONG equ 50 ; ¸èµ¥ÄÚ¸èÇúµÄ×î´óÊý
 
@@ -86,10 +82,10 @@ song struct ; ¸èÇúÐÅÏ¢½á¹¹Ìå
 ; TODO : ÆäËû¸èÇúÐÅÏ¢
 song ends
 
-songgroup struct ; ¸èµ¥ÐÅÏ¢½á¹¹Ìå
-	groupid dword DEFAULT_SONG_GROUP
-	groupname byte MAX_GROUP_NAME_LEN dup(0)
-songgroup ends
+;songgroup struct ; ¸èµ¥ÐÅÏ¢½á¹¹Ìå
+;	groupid dword DEFAULT_SONG_GROUP
+;	groupname byte MAX_GROUP_NAME_LEN dup(0)
+;songgroup ends
 
 CollectSongPath proto, ; ½«songPath¸´ÖÆµ½¶ÔÓ¦µÄtargetPathÖÐÈ¥
 	songPath : dword,
@@ -100,15 +96,12 @@ ShowMainDialogView proto,
 
 SelectGroup proto, ; Ñ¡ÖÐµ±Ç°Group
 	hWin : dword
-; TODO
 
 GetAllGroups proto, ; ²éÑ¯ËùÓÐµÄgroup
 	hWin : dword
-; TODO
 
 AddNewGroup proto, ; ¼ÓÈëÒ»¸öÐÂµÄgroup
 	hWin : dword
-; TODO
 
 DeleteOldGroup proto ; É¾³ýÒ»¸ögroup£¬ µ«²»»áÉ¾³ýÆäÖÐµÄ¸èÇú
 ; TODO
@@ -117,11 +110,7 @@ DeleteOldGroup proto ; É¾³ýÒ»¸ögroup£¬ µ«²»»áÉ¾³ýÆäÖÐµÄ¸èÇú
 ; DeleteSongFromCurrentGroup proto, 
 ;	hWin : dword 
 
-GetInputGroupName proto, ; ´ÓÓÃ»§µÄÊäÈë»ñÈ¡readGroupName
-	readGroupName : dword 
-; todo
-
-StartAddNewGroup proto
+StartAddNewGroup proto ; ¿ªÊ¼¼ÓÈëÐÂ¸èµ¥µÄ³ÌÐò
 
 NewGroupMain proto, ; ÐÂÔö¸èµ¥µÄ¶Ô»°¿òÖ÷³ÌÐò
 	hWin: dword,
@@ -148,13 +137,14 @@ groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; Ä¿Ç°ÕýÔÚ²¥·ÅµÄ¸èµ¥±àºÅµÄstr¸
 numCurrentGroupSongs dword 0 ; µ±Ç°²¥·Å¸èµ¥µÄ¸èÇúÊýÁ¿
 currentGroupSongs song MAX_GROUP_SONG dup(<"#">) ; µ±Ç°²¥·Å¸èµ¥µÄËùÓÐ¸èÇúÐÅÏ¢
 
+maxGroupId dword 0
+
 ; ++++++++++++++µ¼ÈëÎÄ¼þOPpenFileName½á¹¹++++++++++++++
 ofn OPENFILENAME <>
 ofnTitle BYTE 'µ¼ÈëÒôÀÖ', 0	
 
 ; +++++++++++++++³ÌÐòËùÐè²¿·Ö´°¿Ú±äÁ¿+++++++++++++++
 hInstance dword ?
-hGroupManager dword ?
 hNewGroup dword ?
 
 ; +++++++++++++++ÅäÖÃÐÅÏ¢+++++++++++(ÒòÎª²âÊÔ¶ø×¢ÊÍ)
@@ -199,28 +189,37 @@ DialogMain proc,
 	wParam : dword,
 	lParam : dword
 
+	local loword : word
+	local hiword : word
+
+	mov	eax, wParam
+	mov	loword, ax
+;	mov	hiword, 
+	shrd eax, ebx, 16
+	mov	hiword, ax
+
 	.if	uMsg == WM_INITDIALOG
+		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
 		; do something
 	.elseif	uMsg == WM_COMMAND
-		.if wParam == IDC_FILE_SYSTEM
+		.if loword == IDC_FILE_SYSTEM
 			invoke ImportSingleFile, hWin
 			invoke ShowMainDialogView, hWin
-		.elseif wParam == IDC_MANAGE_CURRENT_GROUP
-			invoke StartGroupManage, hWin
-			invoke ShowMainDialogView, hWin
-		.elseif wParam == IDC_GROUPS
-			invoke SelectGroup, hWin ; TODO
-		.elseif wParam == IDC_ADD_NEW_GROUP
+		.elseif loword == IDC_GROUPS
+			.if hiword == CBN_SELCHANGE
+				invoke SelectGroup, hWin ; TODO
+				invoke ShowMainDialogView, hWin
+			.endif
+		.elseif loword == IDC_ADD_NEW_GROUP
 			invoke StartAddNewGroup
-;			invoke AddNewGroup
+			invoke GetAllGroups, hWin
 			invoke ShowMainDialogView, hWin
+		.else
+			; do something
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
-		.if hGroupManager != 0
-			invoke EndDialog, hGroupManager, 0
-		.endif
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
@@ -295,33 +294,6 @@ GetGroupDetailInStr proc,
 	ret
 GetGroupDetailInStr endp
 
-StartGroupManage proc,
-	hWin : dword
-	invoke DialogBoxParam, hInstance, IDD_GROUP_MANAGE, 0, addr GroupManageMain, 0
-	ret
-StartGroupManage endp
-
-GroupManageMain proc,
-	hWin : dword,
-	uMsg : dword,
-	wParam : dword,
-	lParam : dword
-
-	.if	uMsg == WM_INITDIALOG
-		push hWin
-		pop hGroupManager
-		; do something
-	.elseif	uMsg == WM_COMMAND
-	.elseif	uMsg == WM_CLOSE
-		mov hGroupManager, 0
-		invoke EndDialog,hWin,0
-	.else
-	.endif
-
-	xor eax, eax ; eax = 0
-	ret
-GroupManageMain endp
-
 GetCurrentGroupSong proc
 	invoke GetTargetGroupSong, currentPlayGroup, SAVE_TO_MAIN_DIALOG_GROUP
 	ret
@@ -358,6 +330,9 @@ REPEAT_READ:
 	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL
 
 	invoke atol, addr readGroupDetailStr
+	.if eax > maxGroupId
+		mov maxGroupId, eax
+	.endif
 	.if eax == songGroup
 		push esi
 		invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path
@@ -365,6 +340,7 @@ REPEAT_READ:
 		add	esi, SIZE song
 		inc counter
 	.endif
+	
 
 	jmp REPEAT_READ
 END_READ:
@@ -395,7 +371,6 @@ ShowMainDialogView proc,
 	hWin : dword
 	LOCAL	counter : dword
 
-	invoke GetAllGroups, hWin
 ;	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr simpleText
 
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0
@@ -424,7 +399,42 @@ ShowMainDialogView endp
 
 SelectGroup proc,
 	hWin : dword
-; TODO
+	local indexToSet : dword
+	local BytesRead : dword
+	local handler_saved : dword
+	local counter : dword
+
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0
+	mov	indexToSet, eax
+
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	mov		handler, eax
+
+	mov		esi, 0
+
+REPEAT_READ:
+	push esi
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
+	pop esi
+
+	.if esi == indexToSet
+		invoke atol, addr readGroupDetailStr
+		mov currentPlayGroup, eax
+		jmp END_READ
+	.endif
+	inc esi
+	jmp REPEAT_READ
+END_READ:
+	invoke CloseHandle, handler
+
+	xor eax, eax
 	ret
 SelectGroup endp
 
@@ -441,12 +451,14 @@ AddNewGroup proc,
 	invoke SetFilePointer, handler, 0, 0, FILE_END
 
 	invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr
-;	invoke  
-	invoke GetInputGroupName, addr readGroupNameStr
+	mov	readGroupNameStr, MAX_GROUP_NAME_LEN - 1
+	invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_GETLINE, 0, addr readGroupNameStr
 
 ;	users can modify add name
-	invoke GetGroupDetailInStr, eax
+	add		maxGroupId, 1
+	invoke GetGroupDetailInStr, maxGroupId
 ; todo : add limit to id so that they are not equal
+;	invoke CryptGenRandom, 0, MAX_GROUP_DETAIL_LEN - 1, groupDetailStr
 
 	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
 	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
@@ -488,17 +500,6 @@ END_READ:
 	ret
 GetAllGroups endp
 
-GetInputGroupName proc,
-	targetStr : dword
-; todo
-	mov esi, offset inputGroupNameStr
-	mov	edi, targetStr
-	mov	ecx, MAX_GROUP_NAME_LEN - 1
-	cld
-	rep	movsb
-	ret
-GetInputGroupName endp
-
 StartAddNewGroup proc
 	invoke DialogBoxParam, hInstance, IDD_DIALOG_ADD_NEW_GROUP, 0, addr NewGroupMain, 0
 	ret
@@ -513,11 +514,11 @@ NewGroupMain proc,
 	.if	uMsg == WM_INITDIALOG
 		push hWin
 		pop hNewGroup
-;		invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, 
-		; do something
+		invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_LIMITTEXT, MAX_GROUP_NAME_LEN - 1, 0
 	.elseif	uMsg == WM_COMMAND
 		.if wParam == IDC_BUTTON_ADD_NEW_GROUP
 			invoke AddNewGroup, hWin
+			invoke EndDialog, hWin, 0
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		mov hNewGroup, 0

@@ -3,15 +3,11 @@
 // π© test.rc  π”√
 //
 #define IDD_DIALOG                      101
-#define IDD_GROUP_MANAGE                103
-#define IDD_ADD_NEW_GROUP               105
 #define IDD_DIALOG_ADD_NEW_GROUP        105
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_COMBO1                      1009
 #define IDC_GROUPS                      1009
 #define IDC_MANAGE_CURRENT_GROUP        1012
-#define IDC_MANAGE_ALL_GROUP            1013
-#define IDC_MANAGE_TARGET_GROUP         1015
 #define IDC_MAIN_GROUP                  1017
 #define IDC_ADD_NEW_GROUP               1023
 #define IDC_NEW_GROUP_NAME              1025
