@@ -24,6 +24,7 @@ IDC_ALL_GROUP_LIST             equ  1013 ; TODO
 IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO
 IDC_MAIN_GROUP				   equ  1017 ; 展示当前选择歌单的所有歌曲
 IDC_GROUPS						equ 1009 ; 选择当前歌单
+IDC_ADD_NEW_GROUP				equ 1023; 加入新的歌单
 
 
 ;---------------- process -------------
@@ -32,6 +33,7 @@ DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号
 
 MAX_FILE_LEN equ 8000 ; 最长文件长度
 MAX_GROUP_DETAIL_LEN equ 64 ; 组别编号的最长长度
+MAX_GROUP_NAME_LEN equ 10 ; 歌单名称的最长长度
 MAX_GROUP_SONG equ 50 ; 歌单内歌曲的最大数
 
 SAVE_TO_MAIN_DIALOG_GROUP		equ 1 ; 主界面展示用：保存至当前歌单
@@ -77,12 +79,36 @@ song struct ; 歌曲信息结构体
 ; TODO : 其他歌曲信息
 song ends
 
+songgroup struct ; 歌单信息结构体
+	groupid dword DEFAULT_SONG_GROUP
+	groupname byte MAX_GROUP_NAME_LEN dup(0)
+songgroup ends
+
 CollectSongPath proto, ; 将songPath复制到对应的targetPath中去
 	songPath : dword,
 	targetPath : dword
 
 ShowMainDialogView proto,
 	hWin : dword
+
+SelectGroup proto, ; 选中当前Group
+	hWin : dword
+; TODO
+
+GetAllGroups proto, ; 查询所有的group
+	hWin : dword
+; TODO
+
+AddNewGroup proto ; 加入一个新的group
+; TODO
+
+DeleteOldGroup proto ; 删除一个group， 但不会删除其中的歌曲
+; TODO
+	
+; TODO
+; DeleteSongFromCurrentGroup proto, 
+;	hWin : dword 
+	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -110,7 +136,8 @@ hGroupManager dword ?
 
 ; +++++++++++++++配置信息+++++++++++(因为测试而注释)
 ;songData BYTE ".\data.txt", 0
-;	ofnInitialDir BYTE "C:", 0 ; default open C
+;ofnInitialDir BYTE "C:", 0 ; default open C
+;groupData byte ".\groupdata.txt", 0
 
 ; +++++++++++++函数辅助变量++++++++++++（可能可以被local替代）
 
@@ -119,7 +146,7 @@ currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 buffer byte 0
 
-collectSongPath byte MAX_FILE_LEN dup(0)
+readGroupNameStr byte MAX_GROUP_NAME_LEN dup("-")
 
 ; ++++++++++++++测试专用+++++++++++++ 
 ; ++++++++请根据自己的机器路径修改+++++++++
@@ -128,6 +155,7 @@ simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
 songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; +++++++++++++++code++++++++++++++++++
 .code
@@ -156,7 +184,9 @@ DialogMain proc,
 			invoke StartGroupManage, hWin
 			invoke ShowMainDialogView, hWin
 		.elseif wParam == IDC_GROUPS
-		;	invoke SelectGroup, hWin ; TODO
+			invoke SelectGroup, hWin ; TODO
+		.elseif wParam == IDC_ADD_NEW_GROUP
+			invoke AddNewGroup
 		.endif
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
@@ -276,10 +306,7 @@ GetTargetGroupSong proc,
 
 	LOCAL counter : dword
 
-	mov		eax, songGroup
-
 	invoke GetGroupDetailInStr, songGroup
-
 
     invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
 	mov		handler, eax
@@ -335,8 +362,10 @@ CollectSongPath endp
 
 ShowMainDialogView proc,
 	hWin : dword
-
 	LOCAL	counter : dword
+
+	invoke GetAllGroups, hWin
+;	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr simpleText
 
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0
 	invoke GetCurrentGroupSong
@@ -361,5 +390,67 @@ PRINT_LIST:
 END_PRINT:
 	ret
 ShowMainDialogView endp
+
+SelectGroup proc,
+	hWin : dword
+; TODO
+	ret
+SelectGroup endp
+
+AddNewGroup proc
+	local handler_saved : dword
+	local BytesWritten : dword
+
+    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	mov		handler, eax
+	mov		handler_saved, eax
+
+	invoke SetFilePointer, handler, 0, 0, FILE_END
+; todo
+;	invoke  RtlZeroMemory, addr readGroupName, sizeof readGroupName
+;	users can modify add name
+	invoke GetGroupDetailInStr, eax
+; todo : add limit to id so that they are not equal
+
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
+	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWritten, NULL
+
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
+	invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
+
+	invoke CloseHandle, handler_saved
+	ret
+AddNewGroup endp
+
+GetAllGroups proc,
+	hWin : dword
+; TODO
+
+	local BytesRead : dword
+	local handler_saved : dword
+	local lpstrLength : dword
+
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	mov		handler, eax
+
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0
+REPEAT_READ:
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	; todo : manage group id in a data structure 
+
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
+
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr
+
+	jmp REPEAT_READ
+END_READ:
+	invoke CloseHandle, handler
+	ret
+GetAllGroups endp
 
 END WinMain

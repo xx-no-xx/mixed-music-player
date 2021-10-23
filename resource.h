@@ -11,6 +11,7 @@
 #define IDC_MANAGE_ALL_GROUP            1013
 #define IDC_MANAGE_TARGET_GROUP         1015
 #define IDC_MAIN_GROUP                  1017
+#define IDC_ADD_NEW_GROUP               1023
 
 // Next default values for new objects
 // 
@@ -18,7 +19,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        105
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1021
+#define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
