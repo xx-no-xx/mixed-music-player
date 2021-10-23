@@ -23,6 +23,7 @@ IDC_FILE_SYSTEM 	equ	1001 ; µ¼Èë¸èµ¥µÄ°´Å¥
 IDC_MANAGE_CURRENT_GROUP       equ  1012 ; ½øÈë¹ÜÀí¸èµ¥¶Ô»°¿òµÄ°´Å¥
 IDC_ALL_GROUP_LIST             equ  1013 ; TODO
 IDC_CURRENT_GROUP_LIST         equ  1015 ; TODO
+IDC_MAIN_GROUP				   equ  1017 ; TODO
 
 
 ;---------------- process -------------
@@ -32,6 +33,10 @@ DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ
 MAX_FILE_LEN equ 8000 ; ×î³¤ÎÄ¼þ³¤¶È
 MAX_GROUP_DETAIL_LEN equ 64 ; ×é±ð±àºÅµÄ×î³¤³¤¶È
 MAX_GROUP_SONG equ 50 ; ¸èµ¥ÄÚ¸èÇúµÄ×î´óÊý
+
+SAVE_TO_MAIN_DIALOG_GROUP		equ 1 ; Ö÷½çÃæÕ¹Ê¾ÓÃ£º±£´æÖÁµ±Ç°¸èµ¥
+SAVE_TO_TARGET_GROUP		equ 2 ; ¸èÇú¹ÜÀíÓÃ£º±£´æÖÁ¹ÜÀíÒ³µÄµ±Ç°¸èµ¥
+SAVE_TO_DEFAULT_GROUP		equ 3 ; ¸èµ¥¹ÜÀíÓÃ£º±£´æÖÁ¹ÜÀíÒ³µÄÄ¬ÈÏ¸èµ¥
 
 
 ; +++++++++++++++++ function ++++++++++++++++
@@ -62,7 +67,8 @@ GroupManageMain proto, ; TODO : ¹ÜÀíµ±Ç°¸èµ¥µÄÖ÷Âß¼­
 GetCurrentGroupSong proto ; TODO : ¸üÐÂcurrentPlaySongµÄ¸èÇúÐÅÏ¢
 
 GetTargetGroupSong proto, ; TODO : »ñµÃsongGroupµÄËùÓÐ¸èÇúÐÅÏ¢
-	songGroup : dword
+	songGroup : dword,
+	saveTo: dword
 	; TODO : ÖÆ¶¨±»±£´æÔÚÄÄÒ»¸öÄÚ²¿½á¹¹Àï
 
 song struct ; ¸èÇúÐÅÏ¢½á¹¹Ìå
@@ -70,6 +76,17 @@ song struct ; ¸èÇúÐÅÏ¢½á¹¹Ìå
 ;	songname byte 10 dup(0) ; TODO: ¸èÇúÃû³Æ
 ; TODO : ÆäËû¸èÇúÐÅÏ¢
 song ends
+
+CollectSongPath proto, ; ½«songPath¸´ÖÆµ½¶ÔÓ¦µÄtargetPathÖÐÈ¥
+	songPath : dword,
+	targetPath : dword
+
+
+ShowMainDialog proto,
+	hWin : dword
+
+
+
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -83,7 +100,7 @@ groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; Ä¿Ç°ÕýÔÚ²¥·ÅµÄ¸èµ¥±àºÅµÄstr¸
 
 ; ¸èµ¥·ÖÎª×Ô¶¨Òå¸èµ¥ºÍÄ¬ÈÏ¸èµ¥¡£Ä¬ÈÏ¸èµ¥°üÀ¨È«²¿¸èÇú¡£
 
-numCurrentGroupSongs dword 0 ; Ä¿Ç°ÓµÓÐµÄ×Ô¶¨Òå¸èµ¥Êý
+numCurrentGroupSongs dword 0 ; µ±Ç°²¥·Å¸èµ¥µÄ¸èÇúÊýÁ¿
 currentGroupSongs song MAX_GROUP_SONG dup(<>) ; µ±Ç°²¥·Å¸èµ¥µÄËùÓÐ¸èÇúÐÅÏ¢
 
 ; ++++++++++++++µ¼ÈëÎÄ¼þOPpenFileName½á¹¹++++++++++++++
@@ -105,10 +122,12 @@ currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 buffer byte 0
 
+collectSongPath byte MAX_FILE_LEN dup(0)
+
 ; ++++++++++++++²âÊÔ×¨ÓÃ+++++++++++++ 
 ; ++++++++Çë¸ù¾Ý×Ô¼ºµÄ»úÆ÷Â·¾¶ÐÞ¸Ä+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
-simpleText byte "somethingrighthere", 0ah
+simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
 songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
@@ -130,6 +149,13 @@ DialogMain proc,
 	lParam : dword
 
 	.if	uMsg == WM_INITDIALOG
+		; ++++++++++ only for test ++++++++++
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr simpleText
+		; ++++++++++ only for test ++++++++++
 		; do something
 	.elseif	uMsg == WM_COMMAND
 		.if wParam == IDC_FILE_SYSTEM
@@ -242,40 +268,77 @@ GroupManageMain proc,
 GroupManageMain endp
 
 GetCurrentGroupSong proc
-	invoke GetTargetGroupSong, currentPlayGroup
+	invoke GetTargetGroupSong, currentPlayGroup, SAVE_TO_MAIN_DIALOG_GROUP
 	ret
 GetCurrentGroupSong endp
 
 GetTargetGroupSong proc,
-	songGroup : dword
+	songGroup : dword,
+	saveTo : dword
 
 	LOCAL BytesRead : dword
 	LOCAL handler_saved : dword
 	LOCAL lpstrLength : dword
 
+	LOCAL counter : dword
+
 	invoke GetGroupDetailInStr, songGroup
 
-    INVOKE  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP
+		mov	 esi, offset currentPlaySong
+	.endif
+
+    invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
 	mov		handler, eax
 
-	mov	numCurrentGroupSongs, 0
+	mov	counter, 0
 REPEAT_READ:
 	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
 	.if BytesRead == 0
 		jmp END_READ
 	.endif
-
 	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
-	
+
 	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
 	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL
 
-	inc numCurrentGroupSongs
+	invoke atol, addr readGroupDetailStr
+	.if eax == songGroup
+		push esi
+		invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path
+		pop	 esi
+		add	esi, SIZE song
+		inc counter
+	.endif
+
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler
 
+	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP 
+		push counter
+		pop numCurrentGroupSongs
+	.endif
+
 	ret
 GetTargetGroupSong endp
+
+CollectSongPath proc,
+	songPath : dword,
+	targetPath : dword
+
+	mov	esi, songPath
+	mov	edi, targetPath
+	mov	ecx, MAX_FILE_LEN 
+	rep movsb
+
+
+	ret
+CollectSongPath endp
+
+ShowMainDialogView proc,
+	hWin : dword
+
+ShowMainDialogView endp
 
 END WinMain

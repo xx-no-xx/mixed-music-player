@@ -38,3 +38,9 @@ C:\Users\gassq\Desktop\114567630-1-208.mp3
 - 长度分别被补全为maxGroupDetailLength, maxFileLength; 便于读取时读取。
 
 - 如果一首歌属于多个组，它需要多次存储
+
+## 参考资料
+
+list box : https://docs.microsoft.com/en-us/windows/win32/winmsg/about-messages-and-message-queues
+
+list box control : https://docs.microsoft.com/en-us/windows/win32/controls/bumper-list-box-control-reference-notifications
