@@ -4,6 +4,7 @@
 //
 #define IDD_DIALOG                      101
 #define IDD_DIALOG_ADD_NEW_GROUP        105
+#define IDB_BITMAP1                     107
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_COMBO1                      1009
 #define IDC_GROUPS                      1009
@@ -17,7 +18,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_RESOURCE_VALUE        108
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1027
 #define _APS_NEXT_SYMED_VALUE           101
