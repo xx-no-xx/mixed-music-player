@@ -25,17 +25,19 @@ IDC_GROUPS						equ 1009 ; 选择当前歌单
 IDC_ADD_NEW_GROUP				equ 1023; 加入新的歌单
 IDC_NEW_GROUP_NAME				equ 1025 ; 输入新歌单的名称
 IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; 确认加入新的歌单
+IDC_DELETE_CURRENT_GROUP		equ 1027 ; 删除当前歌单的按钮
 
 
 
 ;---------------- process -------------
 DO_NOTHING			equ 0 ; 特定的返回值标识
-DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号
+DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号 ; todo : change 99824 to 0
 
 MAX_FILE_LEN equ 8000 ; 最长文件长度
 MAX_GROUP_DETAIL_LEN equ 32 ; 组别编号的最长长度
 MAX_GROUP_NAME_LEN equ 20 ; 歌单名称的最长长度
 MAX_GROUP_SONG equ 50 ; 歌单内歌曲的最大数
+MAX_GROUP_NUM equ 10 ; 最大的歌单数量
 
 ; 实际最大LEN应该-1， 这是因为str最后需要为0，否则输出时会跨越到别的存储区域。
 
@@ -60,18 +62,9 @@ AddSingleSongOFN proto,  ; 配合ImportSingleFile，把刚刚读入的文件导入songGroup
 GetGroupDetailInStr proto, ; 获取currentPlayGroup的str形式
 	songGroup : dword
 
-StartGroupManage proto, ; TODO: 管理当前选择的歌单
-	hWin : dword
+GetCurrentGroupSong proto
 
-GroupManageMain proto, ; TODO : 管理当前歌单的主逻辑
-	hWin : dword,
-	uMsg : dword,
-	wParam : dword,
-	lParam : dword
-
-GetCurrentGroupSong proto ; TODO : 更新currentGroupSongs的歌曲信息
-
-GetTargetGroupSong proto, ; TODO : 获得songGroup的所有歌曲信息
+GetTargetGroupSong proto,
 	songGroup : dword,
 	saveTo: dword
 	; TODO : 制定被保存在哪一个内部结构里
@@ -82,10 +75,10 @@ song struct ; 歌曲信息结构体
 ; TODO : 其他歌曲信息
 song ends
 
-;songgroup struct ; 歌单信息结构体
-;	groupid dword DEFAULT_SONG_GROUP
-;	groupname byte MAX_GROUP_NAME_LEN dup(0)
-;songgroup ends
+songgroup struct ; 歌单信息结构体
+	groupid dword DEFAULT_SONG_GROUP
+	groupname byte MAX_GROUP_NAME_LEN dup(0)
+songgroup ends
 
 CollectSongPath proto, ; 将songPath复制到对应的targetPath中去
 	songPath : dword,
@@ -97,13 +90,14 @@ ShowMainDialogView proto,
 SelectGroup proto, ; 选中当前Group
 	hWin : dword
 
-GetAllGroups proto, ; 查询所有的group
+GetAllGroups proto, ; 查询所有的group, 并会默认设置第0个歌单为激活歌单
 	hWin : dword
 
 AddNewGroup proto, ; 加入一个新的group
 	hWin : dword
 
-DeleteOldGroup proto ; 删除一个group， 但不会删除其中的歌曲
+DeleteCurrentGroup proto, ; 删除当前group
+	hWin : dword
 ; TODO
 	
 ; TODO
@@ -117,9 +111,6 @@ NewGroupMain proto, ; 新增歌单的对话框主程序
 	uMsg : dword,
 	wParam : dword,
 	lParam : dword
-
-
-	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -139,12 +130,23 @@ currentGroupSongs song MAX_GROUP_SONG dup(<"#">) ; 当前播放歌单的所有歌曲信息
 
 maxGroupId dword 0
 
+; ++++++++++++++删除功能引入的临时存储变量++++++++++++++
+; ++++ 你不应在除了删除功能之外的函数访问这些变量 +++++++
+delAllGroups songgroup MAX_GROUP_NUM dup(<,>)
+
 ; ++++++++++++++导入文件OPpenFileName结构++++++++++++++
 ofn OPENFILENAME <>
 ofnTitle BYTE '导入音乐', 0	
+ofnFilter byte "Media Files(*mp3, *wav)", 0, "*.mp3;*.wav", 0, 0
+
+; ++++++++++++++Message Box 提示信息++++++++++++++++++
+deleteNone byte "您没有选中歌单，不能删除。",0
+addNone byte "您没有选中歌单，不能导入歌曲。", 0
+
 
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
 hInstance dword ?
+hMainDialog dword ?
 hNewGroup dword ?
 
 ; +++++++++++++++配置信息+++++++++++(因为测试而注释)
@@ -199,8 +201,11 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
+		push hWin
+		pop hMainDialog
 		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
+;		invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0 
 		; do something
 	.elseif	uMsg == WM_COMMAND
 		.if loword == IDC_FILE_SYSTEM
@@ -213,8 +218,12 @@ DialogMain proc,
 			.endif
 		.elseif loword == IDC_ADD_NEW_GROUP
 			invoke StartAddNewGroup
-			invoke GetAllGroups, hWin
 			invoke ShowMainDialogView, hWin
+		.elseif loword == IDC_DELETE_CURRENT_GROUP	
+			.if hiword == BN_CLICKED
+				invoke DeleteCurrentGroup, hWin
+				invoke ShowMainDialogView, hWin
+			.endif
 		.else
 			; do something
 		.endif
@@ -233,6 +242,11 @@ DialogMain endp
 ImportSingleFile proc,
 	hWin : dword
 
+	.if currentPlayGroup == DEFAULT_SONG_GROUP
+		invoke MessageBox, hWin, addr addNone, 0, MB_OK
+		ret
+	.endif
+
 	invoke  RtlZeroMemory, addr ofn, sizeof ofn ; fill with 0
 
 	mov ofn.lStructSize, sizeof OPENFILENAME
@@ -244,6 +258,8 @@ ImportSingleFile proc,
 	mov ofn.lpstrInitialDir, OFFSET ofnInitialDir
 	mov	ofn.nMaxFile, MAX_FILE_LEN
 	mov	ofn.lpstrFile, OFFSET currentSongNameOFN
+	mov	ofn.lpstrFilter, offset ofnFilter
+	mov ofn.Flags, OFN_HIDEREADONLY
 
 	invoke GetOpenFileName, addr ofn
 
@@ -264,6 +280,7 @@ AddSingleSongOFN proc,
 	LOCAL BytesWritten : dword
 	LOCAL handler_saved : dword
 	LOCAL lpstrLength : dword
+
 
 	invoke GetGroupDetailInStr, songGroup
 
@@ -407,6 +424,11 @@ SelectGroup proc,
 	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0
 	mov	indexToSet, eax
 
+	.if eax == CB_ERR
+		mov currentPlayGroup, DEFAULT_SONG_GROUP
+		ret
+	.endif
+
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
 	mov		handler, eax
 
@@ -454,11 +476,8 @@ AddNewGroup proc,
 	mov	readGroupNameStr, MAX_GROUP_NAME_LEN - 1
 	invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_GETLINE, 0, addr readGroupNameStr
 
-;	users can modify add name
 	add		maxGroupId, 1
 	invoke GetGroupDetailInStr, maxGroupId
-; todo : add limit to id so that they are not equal
-;	invoke CryptGenRandom, 0, MAX_GROUP_DETAIL_LEN - 1, groupDetailStr
 
 	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
 	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
@@ -467,6 +486,13 @@ AddNewGroup proc,
 	invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
 
 	invoke CloseHandle, handler_saved
+
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_GETCOUNT, 0, 0
+	dec eax
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_SETCURSEL, eax, 0
+	invoke SelectGroup, hMainDialog
+
 	ret
 AddNewGroup endp
 
@@ -474,8 +500,6 @@ GetAllGroups proc,
 	hWin : dword
 
 	local BytesRead : dword
-	local handler_saved : dword
-	local lpstrLength : dword
 
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
 	mov		handler, eax
@@ -496,6 +520,7 @@ REPEAT_READ:
 
 	jmp REPEAT_READ
 END_READ:
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0
 	invoke CloseHandle, handler
 	ret
 GetAllGroups endp
@@ -529,6 +554,81 @@ NewGroupMain proc,
 	xor eax, eax ; eax = 0
 	ret
 NewGroupMain endp
+
+DeleteCurrentGroup proc,
+	hWin : dword
+
+	local BytesRead : dword
+	local BytesWritten : dword
+	local currentSelect : dword
+	local counter : dword
+
+	invoke SelectGroup, hWin ; get current select group
+	.if currentPlayGroup == DEFAULT_SONG_GROUP
+		invoke MessageBox, hWin, addr deleteNone, 0, MB_OK
+		ret
+	.endif
+
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	mov		handler, eax
+	mov		esi, offset delAllGroups
+
+
+	mov		counter, 0
+REPEAT_READ:
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+
+	invoke atol, addr readGroupDetailStr
+	mov (songgroup ptr [esi]).groupid, eax
+
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	invoke ReadFile, handler, addr (songgroup ptr [esi]).groupname, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
+
+	add esi, size songgroup
+	add counter, 1
+	jmp REPEAT_READ
+END_READ:
+	invoke CloseHandle, handler
+
+	mov		esi, offset delAllGroups
+
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0
+    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	mov		handler, eax
+	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN
+
+REPEAT_WRITE:
+	mov	ebx, (songgroup ptr [esi]).groupid
+	.if ebx != currentPlayGroup
+		invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
+
+		invoke GetGroupDetailInStr, (songgroup ptr [esi]).groupid
+		invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
+
+		invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
+		invoke WriteFile, handler, addr (songgroup ptr [esi]).groupname, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
+
+		invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr (songgroup ptr [esi]).groupname
+	.endif
+
+	sub counter, 1
+	add	esi, size songgroup
+	.if counter ==  0
+		jmp END_WRITE
+	.endif
+	jmp REPEAT_WRITE
+END_WRITE:
+	invoke CloseHandle, handler
+
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0
+	invoke SelectGroup, hWin
+
+	ret
+DeleteCurrentGroup endp
 
 
 END WinMain
