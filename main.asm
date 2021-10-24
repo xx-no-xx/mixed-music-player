@@ -10,6 +10,8 @@ include masm32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
 
+; irvine32.inc
+
 includelib masm32.lib
 includelib user32.lib
 includelib kernel32.lib
@@ -27,6 +29,7 @@ IDC_NEW_GROUP_NAME				equ 1025 ; 输入新歌单的名称
 IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; 确认加入新的歌单
 IDC_DELETE_CURRENT_GROUP		equ 1027 ; 删除当前歌单的按钮
 IDC_DELETE_CURRENT_SONG			equ 1028 ; 删除当前歌曲的按钮
+IDC_DELETE_INVALID_SONGS		equ 1029 ; 删除所有非法的歌曲
 
 
 
@@ -35,8 +38,12 @@ DO_NOTHING			equ 0 ; 特定的返回值标识
 DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号 ; todo : change 99824 to 0
 DEFAULT_PLAY_SONG   equ 21474 ; 默认的第index首歌 ; todo : change 21474 to a larger num
 
+FILE_DO_EXIST		equ 0 ; 文件存在
+FILE_NOT_EXIST		equ 1 ; 文件不存在
+
 DELETE_ALL_SONGS_IN_GROUP	equ 0 ;删除songGroup(dword)里的所有歌
 DELETE_CURRENT_PLAY_SONG	equ 1 ;删除选中的那首歌（current play song）
+DELETE_INVALID				equ 2 ;删除所有不存在的路径对应的歌
 
 MAX_FILE_LEN equ 1000 ; 最长文件长度
 MAX_GROUP_DETAIL_LEN equ 32 ; 组别编号的最长长度
@@ -128,6 +135,15 @@ NewGroupMain proto, ; 新增歌单的对话框主程序
 	uMsg : dword,
 	wParam : dword,
 	lParam : dword
+
+CheckFileExist proto, ; 读取一个字符串targetPath(pointer)，判断对应的文件是否存在，并返回在eax中
+	targetPath : dword
+
+
+DeleteInvalidSongs proto,
+	hWin : dword
+	
+	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -250,6 +266,11 @@ DialogMain proc,
 		.elseif loword == IDC_DELETE_CURRENT_SONG
 			.if hiword == BN_CLICKED
 				invoke DeleteCurrentPlaySong, hWin
+				invoke ShowMainDialogView, hWin
+			.endif
+		.elseif loword == IDC_DELETE_INVALID_SONGS
+			.if hiword == BN_CLICKED
+				invoke DeleteInvalidSongs, hWin
 				invoke ShowMainDialogView, hWin
 			.endif
 		.else
@@ -746,6 +767,17 @@ REPEAT_WRITE:
 	.endif
 
 	push ecx
+	.if method == DELETE_INVALID
+		push eax
+		invoke CheckFileExist, addr (song ptr [esi]).path
+		.if eax == FILE_NOT_EXIST
+			pop eax
+			add esi, size song
+			jmp REPEAT_WRITE
+		.endif
+		pop eax
+	.endif
+
 	invoke WriteFile, handler, addr buffer, length divideLine,  addr BytesWrite, NULL
 	invoke GetGroupDetailInStr, (song ptr [esi]).groupid
 	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWrite, NULL
@@ -802,5 +834,24 @@ DeleteCurrentPlaySong proc,
 	invoke DeleteTargetSong, hWin, DELETE_CURRENT_PLAY_SONG, 0
 	ret
 DeleteCurrentPlaySong endp
+
+CheckFileExist proc,
+	targetPath : dword
+
+	invoke GetFileAttributes, targetPath
+	.if eax == INVALID_FILE_ATTRIBUTES
+		mov eax, FILE_NOT_EXIST
+	.else
+		mov eax, FILE_DO_EXIST
+	.endif
+
+	ret
+CheckFileExist endp
+
+DeleteInvalidSongs proc,
+	hWin : dword
+	invoke DeleteTargetSong, hWin, DELETE_INVALID, 0
+	ret
+DeleteInvalidSongs endp
 
 END WinMain
