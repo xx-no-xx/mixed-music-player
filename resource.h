@@ -12,8 +12,8 @@
 #define IDC_ADD_NEW_GROUP               1023
 #define IDC_NEW_GROUP_NAME              1025
 #define IDC_BUTTON_ADD_NEW_GROUP        1026
-#define IDC_BUTTON1                     1027
 #define IDC_DELETE_CURRENT_GROUP        1027
+#define IDC_DELETE_CURRENT_SONG         1028
 
 // Next default values for new objects
 // 
