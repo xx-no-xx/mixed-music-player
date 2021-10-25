@@ -16,6 +16,7 @@ includelib masm32.lib
 includelib user32.lib
 includelib kernel32.lib
 includelib comdlg32.lib
+includelib Winmm.lib
 
 ;---------------- control -------------
 IDD_DIALOG 						equ	101 ; Ö÷²¥·Å¶Ô»°¿ò
@@ -30,7 +31,9 @@ IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; È·ÈÏ¼ÓÈëÐÂµÄ¸èµ¥
 IDC_DELETE_CURRENT_GROUP		equ 1027 ; É¾³ýµ±Ç°¸èµ¥µÄ°´Å¥
 IDC_DELETE_CURRENT_SONG			equ 1028 ; É¾³ýµ±Ç°¸èÇúµÄ°´Å¥
 IDC_DELETE_INVALID_SONGS		equ 1029 ; É¾³ýËùÓÐ·Ç·¨µÄ¸èÇú
-
+IDC_PLAY_BUTTON                 equ 1030 ; ²¥·Å/ÔÝÍ£°´Å¥
+IDC_PRE_BUTTON                  equ 1032 ; ÉÏÒ»Ê×
+IDC_NEXT_BUTTON                 equ 1033 ; ÏÂÒ»Ê×
 
 
 ;---------------- process -------------
@@ -40,6 +43,11 @@ DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a lar
 
 FILE_DO_EXIST		equ 0 ; ÎÄ¼þ´æÔÚ
 FILE_NOT_EXIST		equ 1 ; ÎÄ¼þ²»´æÔÚ
+
+STATE_PAUSE equ 0 ; ÔÝÍ£²¥·Å
+STATE_PLAY equ 1 ; ÕýÔÚ²¥·Å
+STATE_STOP equ 2 ; Í£Ö¹²¥·Å
+
 
 DELETE_ALL_SONGS_IN_GROUP	equ 0 ;É¾³ýsongGroup(dword)ÀïµÄËùÓÐ¸è
 DELETE_CURRENT_PLAY_SONG	equ 1 ;É¾³ýÑ¡ÖÐµÄÄÇÊ×¸è£¨current play song£©
@@ -143,10 +151,28 @@ CheckFileExist proto, ; ¶ÁÈ¡Ò»¸ö×Ö·û´®targetPath(pointer)£¬ÅÐ¶Ï¶ÔÓ¦µÄÎÄ¼þÊÇ·ñ´æÔ
 DeleteInvalidSongs proto,
 	hWin : dword
 	
-	
+PlayMusic proto, ; ²¥·Å/ÔÝÍ£ÒôÀÖ	
+	hWin : dword
+
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
+
+;--------mciÃüÁî--------
+cmd_open BYTE 'open "%s" alias mySong type mpegvideo',0
+cmd_close BYTE "close mySong",0
+cmd_play BYTE "play mySong", 0	
+cmd_pause BYTE "pause mySong",0
+cmd_resume BYTE "resume mySong",0
+cmd_getLen BYTE "status mySong length", 0
+cmd_getPos BYTE "status mySong position", 0
+cmd_setPos BYTE "seek mySong to %d", 0
+cmd_setStart BYTE "seek mySong to start", 0	
+cmd_setVol BYTE "setaudio mySong volume to %d",0
+;----------------------
+
+mciCommand BYTE ?
+playState BYTE 0
 
 handler HANDLE ? ; ÎÄ¼þ¾ä±ú
 divideLine byte 0ah ; »»ÐÐdivideLine
@@ -206,10 +232,10 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; ++++++++Çë¸ù¾Ý×Ô¼ºµÄ»úÆ÷Â·¾¶ÐÞ¸Ä+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+ofnInitialDir BYTE "C:\Users\43722\Desktop", 0 ; default open C only for test
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; +++++++++++++++code++++++++++++++++++
 .code
@@ -272,6 +298,10 @@ DialogMain proc,
 			.if hiword == BN_CLICKED
 				invoke DeleteInvalidSongs, hWin
 				invoke ShowMainDialogView, hWin
+			.endif
+		.elseif loword == IDC_PLAY_BUTTON
+			.if hiword == BN_CLICKED
+				invoke PlayMusic, hWin
 			.endif
 		.else
 			; do something
@@ -445,7 +475,7 @@ ShowMainDialogView proc,
 	push numCurrentGroupSongs
 	pop	 counter
 
-	mov		esi, offset currentGroupSongs
+	mov	esi, offset currentGroupSongs
 
 PRINT_LIST:
 	.if counter == 0
@@ -853,5 +883,17 @@ DeleteInvalidSongs proc,
 	invoke DeleteTargetSong, hWin, DELETE_INVALID, 0
 	ret
 DeleteInvalidSongs endp
+
+PlayMusic proc,
+	hWin : dword
+	.if playState == STATE_STOP ; µ±Ç°ÎªÍ£Ö¹×´Ì¬
+		mov playState, STATE_PLAY ; ×ª±äÎª²¥·ÅÌ¬
+	.elseif playState == STATE_PLAY ; µ±Ç°Îª²¥·ÅÌ¬
+		mov playState, STATE_PAUSE ; ×ª±äÎªÔÝÍ£Ì¬
+	.else ; µ±Ç°ÎªÔÝÍ£Ì¬
+		mov playState, STATE_PLAY ; ×ª±äÎª²¥·ÅÌ¬
+	.endif
+	ret 
+PlayMusic endp
 
 END WinMain
