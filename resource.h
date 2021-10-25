@@ -15,14 +15,17 @@
 #define IDC_DELETE_CURRENT_GROUP        1027
 #define IDC_DELETE_CURRENT_SONG         1028
 #define IDC_DELETE_INVALID_SONGS        1029
+#define IDC_PLAY_BUTTON                 1030
+#define IDC_PRE_BUTTON                  1031
+#define IDC_NEXT_BUTTON                 1032
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        108
+#define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1028
+#define _APS_NEXT_CONTROL_VALUE         1033
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
