@@ -58,6 +58,7 @@ MAX_GROUP_DETAIL_LEN equ 32 ; 组别编号的最长长度
 MAX_GROUP_NAME_LEN equ 20 ; 歌单名称的最长长度
 MAX_GROUP_SONG equ 30 ; 歌单内歌曲的最大数
 MAX_GROUP_NUM equ 10 ; 最大的歌单数量
+MAX_SONG_NAME_LEN equ 100; 最大歌曲的名字的长度 ;todotodotodo
 
 MAX_ALL_SONG_NUM equ 300 ; 全体歌曲的最大数目（=MAX_GROUP_SONG * MAX_GROUP_NUM）
 
@@ -92,7 +93,6 @@ GetTargetGroupSong proto, ; 读取歌曲：分为1. SAVE_T_MAIN_DIALOG_GROUP ，将属于so
 
 song struct ; 歌曲信息结构体
 	path byte MAX_FILE_LEN dup(0)
-;	songname byte 10 dup(0) ; TODO: 歌曲名称
 	groupid dword DEFAULT_SONG_GROUP ; 歌曲所属的groupid
 ; TODO : 其他歌曲信息
 song ends
@@ -105,6 +105,11 @@ songgroup ends
 CollectSongPath proto, ; 将songPath复制到对应的targetPath中去
 	songPath : dword,
 	targetPath : dword
+
+CollectSongName proto, ; 将songName复制到targetName中
+	songName : dword,
+	targetName : dword
+
 
 ShowMainDialogView proto, ; 刷新主页d的list box
 	hWin : dword
@@ -224,6 +229,7 @@ hNewGroup dword ?
 readGroupDetailStr byte MAX_GROUP_DETAIL_LEN   dup(0)
 currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
+readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0
 
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
@@ -485,7 +491,8 @@ PRINT_LIST:
 	.endif
 
 	push esi
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr (song ptr [esi]).path  ;将路径加入listbox
+	invoke GetFileTitle, addr (song ptr [esi]).path, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr readSongNameStr  ;将名称加入listbox
 	pop esi
 	add	esi, size song
 	dec counter ; 计数器-1
@@ -905,5 +912,17 @@ PlayMusic proc,
 	.endif
 	ret 
 PlayMusic endp
+
+CollectSongName proc,
+	songPath : dword,
+	targetPath : dword ; 将songPath复制到targetPath，其复制的内容是歌曲name最大长度-1
+	
+	mov	esi, songPath
+	mov	edi, targetPath
+	mov	ecx, MAX_SONG_NAME_LEN - 1
+	cld
+	rep movsb
+	ret
+CollectSongName endp
 
 END WinMain
