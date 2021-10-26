@@ -18,6 +18,8 @@ includelib kernel32.lib
 includelib comdlg32.lib
 includelib Winmm.lib
 
+.const
+
 ;---------------- control -------------
 IDD_DIALOG 						equ	101 ; 主播放对话框
 IDD_DIALOG_ADD_NEW_GROUP		equ 105 ; 加入新歌单的对话框
@@ -162,6 +164,11 @@ DeleteInvalidSongs proto,
 PlayMusic proto, ; 播放/暂停音乐	
 	hWin : dword
 
+CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
+	hWin : dword
+; eax = 0 代表不能够播放（1.没选中歌曲，2.歌曲不存在）
+; eax = 1 代表当前选中了歌曲且歌曲存在
+
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
@@ -212,6 +219,8 @@ ofnFilter byte "Media Files(*mp3, *wav)", 0, "*.mp3;*.wav", 0, 0
 deleteNone byte "您没有选中歌单，不能删除。",0
 addNone byte "您没有选中歌单，不能导入歌曲。", 0
 deleteSongNone byte "您没有选中歌曲，不能删除。", 0
+playSongNone byte "您没有选中歌曲，不能播放。", 0
+playSongInvalid byte "您选中的歌曲不存在，已自动为您删除不存在的歌曲。"
 
 
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
@@ -544,7 +553,8 @@ REPEAT_READ:
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler ; 关闭handler
-	
+
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0 ;默认选择song0
 	invoke SelectSong, hWin ; 选择对应的song
 	xor eax, eax ; eax = 0
 	ret
@@ -903,6 +913,13 @@ DeleteInvalidSongs endp
 
 PlayMusic proc,
 	hWin : dword
+	; test
+	invoke CheckPlayCurrentSong, hWin
+	.if eax == 0
+		ret
+	.endif
+	; end test
+
 	.if playState == STATE_STOP ; 当前为停止状态
 		mov playState, STATE_PLAY ; 转变为播放态
 	.elseif playState == STATE_PLAY ; 当前为播放态
@@ -925,4 +942,23 @@ CollectSongName proc,
 	ret
 CollectSongName endp
 
+CheckPlayCurrentSong proc,
+	hWin : dword
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+		invoke MessageBox, hWin, addr playSongNone, 0, MB_OK
+		mov	eax, 0
+		ret
+	.endif
+	
+	invoke CheckFileExist, addr currentPlaySingleSongPath
+	.if eax == FILE_NOT_EXIST
+		invoke DeleteInvalidSongs, hWin
+		invoke MessageBox, hWin, addr playSongInvalid, 0, MB_OK
+		mov eax, 0
+		ret
+	.endif
+
+	mov	eax, 1
+	ret
+CheckPlayCurrentSong endp
 END WinMain
