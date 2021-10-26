@@ -20,7 +20,6 @@
 #define IDC_PRE_BUTTON                  1031
 #define IDC_NEXT_BUTTON                 1032
 #define IDC_PROGRESS1                   1034
-#define IDC_SLIDER1                     1038
 #define IDC_SOUND                       1038
 #define IDC_FAST_FORWARD                1041
 #define IDC_FAST_BACKWARD               1042
@@ -33,7 +32,6 @@
 #define IDC_CURRENT_STATIC              1050
 #define IDC_CURRENT_PLAY_SONG_TEXT      1051
 #define IDC_BACKGROUND                  2001
-#define IDC_BACKGROUND2                 2002
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
 #define IDB_BACKGROUND_ORANGE           3002
