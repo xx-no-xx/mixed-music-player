@@ -345,6 +345,10 @@ DialogMain proc,
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMIN, 0, 0
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMAX, 0, 1000
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, 1, 1000
+		;初始化音量值
+		mov volume, 1000
+		invoke wsprintf, addr mciCommand, addr intFormat, 100
+		invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
 		; do something
 	.elseif	uMsg == WM_COMMAND
 		.if loword == IDC_FILE_SYSTEM
