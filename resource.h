@@ -18,9 +18,11 @@
 #define IDC_DELETE_CURRENT_GROUP        1027
 #define IDC_DELETE_CURRENT_SONG         1028
 #define IDC_DELETE_INVALID_SONGS        1029
-#define IDC_MFCVSLISTBOX1               1030
 #define IDC_PROGRESS1                   1034
 #define IDC_BACKGROUND                  2001
+#define IDC_PLAY_BUTTON                 1030
+#define IDC_PRE_BUTTON                  1031
+#define IDC_NEXT_BUTTON                 1032
 
 // Next default values for new objects
 // 

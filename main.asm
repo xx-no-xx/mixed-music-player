@@ -16,6 +16,9 @@ includelib masm32.lib
 includelib user32.lib
 includelib kernel32.lib
 includelib comdlg32.lib
+includelib Winmm.lib
+
+.const
 
 ;---------------- control -------------
 IDD_DIALOG 						equ	101 ; Ö÷²¥·Å¶Ô»°¿ò
@@ -30,18 +33,32 @@ IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; È·ÈÏ¼ÓÈëÐÂµÄ¸èµ¥
 IDC_DELETE_CURRENT_GROUP		equ 1027 ; É¾³ýµ±Ç°¸èµ¥µÄ°´Å¥
 IDC_DELETE_CURRENT_SONG			equ 1028 ; É¾³ýµ±Ç°¸èÇúµÄ°´Å¥
 IDC_DELETE_INVALID_SONGS		equ 1029 ; É¾³ýËùÓÐ·Ç·¨µÄ¸èÇú
+<<<<<<< HEAD
 IDC_BACKGROUND					equ 2001 ; ±³¾°Í¼²ã
 ;--------------- image & icon ----------------
 IDB_BITMAP_START				equ 111
 IDB_BACKGROUND_BLUE             equ 115
 IDB_BACKGROUND_ORANGE           equ 116
 ;---------------- process --------------------
+=======
+IDC_PLAY_BUTTON                 equ 1030 ; ²¥·Å/ÔÝÍ£°´Å¥
+IDC_PRE_BUTTON                  equ 1032 ; ÉÏÒ»Ê×
+IDC_NEXT_BUTTON                 equ 1033 ; ÏÂÒ»Ê×
+
+
+;---------------- process -------------
+>>>>>>> origin
 DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
 DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ ; todo : change 99824 to 0
 DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a larger num
 
 FILE_DO_EXIST		equ 0 ; ÎÄ¼þ´æÔÚ
 FILE_NOT_EXIST		equ 1 ; ÎÄ¼þ²»´æÔÚ
+
+STATE_PAUSE equ 0 ; ÔÝÍ£²¥·Å
+STATE_PLAY equ 1 ; ÕýÔÚ²¥·Å
+STATE_STOP equ 2 ; Í£Ö¹²¥·Å
+
 
 DELETE_ALL_SONGS_IN_GROUP	equ 0 ;É¾³ýsongGroup(dword)ÀïµÄËùÓÐ¸è
 DELETE_CURRENT_PLAY_SONG	equ 1 ;É¾³ýÑ¡ÖÐµÄÄÇÊ×¸è£¨current play song£©
@@ -52,6 +69,7 @@ MAX_GROUP_DETAIL_LEN equ 32 ; ×é±ð±àºÅµÄ×î³¤³¤¶È
 MAX_GROUP_NAME_LEN equ 20 ; ¸èµ¥Ãû³ÆµÄ×î³¤³¤¶È
 MAX_GROUP_SONG equ 30 ; ¸èµ¥ÄÚ¸èÇúµÄ×î´óÊý
 MAX_GROUP_NUM equ 10 ; ×î´óµÄ¸èµ¥ÊýÁ¿
+MAX_SONG_NAME_LEN equ 100; ×î´ó¸èÇúµÄÃû×ÖµÄ³¤¶È ;todotodotodo
 
 MAX_ALL_SONG_NUM equ 300 ; È«Ìå¸èÇúµÄ×î´óÊýÄ¿£¨=MAX_GROUP_SONG * MAX_GROUP_NUM£©
 
@@ -78,15 +96,14 @@ AddSingleSongOFN proto,  ; ÅäºÏImportSingleFile£¬°Ñ¸Õ¸Õ¶ÁÈëµÄÎÄ¼þµ¼ÈësongGroup
 GetGroupDetailInStr proto, ; »ñÈ¡currentPlayGroupµÄstrÐÎÊ½
 	songGroup : dword
 
-GetCurrentGroupSong proto
+GetCurrentGroupSong proto ; ´Ódata.txtÖÐ¶ÁÈ¡µ±Ç°×éµÄ¸èÇú
 
-GetTargetGroupSong proto,
+GetTargetGroupSong proto, ; ¶ÁÈ¡¸èÇú£º·ÖÎª1. SAVE_T_MAIN_DIALOG_GROUP £¬½«ÊôÓÚsongGroupµÄ¸èÇú´æÈëcurrentGroupSongs
 	songGroup : dword,
 	saveTo: dword
 
 song struct ; ¸èÇúÐÅÏ¢½á¹¹Ìå
 	path byte MAX_FILE_LEN dup(0)
-;	songname byte 10 dup(0) ; TODO: ¸èÇúÃû³Æ
 	groupid dword DEFAULT_SONG_GROUP ; ¸èÇúËùÊôµÄgroupid
 ; TODO : ÆäËû¸èÇúÐÅÏ¢
 song ends
@@ -100,7 +117,12 @@ CollectSongPath proto, ; ½«songPath¸´ÖÆµ½¶ÔÓ¦µÄtargetPathÖÐÈ¥
 	songPath : dword,
 	targetPath : dword
 
-ShowMainDialogView proto,
+CollectSongName proto, ; ½«songName¸´ÖÆµ½targetNameÖÐ
+	songName : dword,
+	targetName : dword
+
+
+ShowMainDialogView proto, ; Ë¢ÐÂÖ÷Ò³dµÄlist box
 	hWin : dword
 
 SelectGroup proto, ; Ñ¡ÖÐµ±Ç°Group
@@ -121,9 +143,12 @@ SelectSong proto, ; Ñ¡ÖÐµ±Ç°²¥·ÅµÄ¸èÇú
 	
 DeleteTargetSong proto, ; É¾³ýÄ¿±ê¸èÇú
 	hWin : dword,
-	method : dword,
+	method : dword, 
 	songGroup : dword
-;toodo
+; ·ÖÎªÈýÖÖÉ¾³ýµÄmethod: 
+; DELETE_ALL_SONGS_IN_GROUP	:É¾³ýsongGroup(dword)ÀïµÄËùÓÐ¸è, ÐèÒªÖ¸¶¨songGroup
+; DELETE_CURRENT_PLAY_SONG	:É¾³ýÑ¡ÖÐµÄÄÇÊ×¸è£¨current play song£©
+; DELETE_INVALID			:É¾³ýËùÓÐ²»´æÔÚµÄÂ·¾¶¶ÔÓ¦µÄ¸è
 
 GetAllSongInData proto ; ½«ËùÓÐµÄ¸èÇú´æ´¢ÖÁdelAllSongs,
 
@@ -145,6 +170,7 @@ CheckFileExist proto, ; ¶ÁÈ¡Ò»¸ö×Ö·û´®targetPath(pointer)£¬ÅÐ¶Ï¶ÔÓ¦µÄÎÄ¼þÊÇ·ñ´æÔ
 DeleteInvalidSongs proto,
 	hWin : dword
 	
+<<<<<<< HEAD
 ChangeTheme proto,	; ¸ü»»Æ¤·ô
 	hWin : dword
 ; Êó±ê×ó¼üÊÂ¼þ
@@ -158,11 +184,37 @@ InitUI proto,
 	hWin : dword, 
 	wParam : dword,
 	lParam : dword
+=======
+PlayMusic proto, ; ²¥·Å/ÔÝÍ£ÒôÀÖ	
+	hWin : dword
+
+CheckPlayCurrentSong proto, ; ÊÔÍ¼²¥·Åµ±Ç°µÄ¸èÇúcurrentPlaySingleSongPath
+	hWin : dword
+; eax = 0 ´ú±í²»ÄÜ¹»²¥·Å£¨1.Ã»Ñ¡ÖÐ¸èÇú£¬2.¸èÇú²»´æÔÚ£©
+; eax = 1 ´ú±íµ±Ç°Ñ¡ÖÐÁË¸èÇúÇÒ¸èÇú´æÔÚ
+
+>>>>>>> origin
 
 Paint proto, 
 	hWin :dword
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
+
+;--------mciÃüÁî--------
+cmd_open BYTE 'open "%s" alias mySong type mpegvideo',0
+cmd_close BYTE "close mySong",0
+cmd_play BYTE "play mySong", 0	
+cmd_pause BYTE "pause mySong",0
+cmd_resume BYTE "resume mySong",0
+cmd_getLen BYTE "status mySong length", 0
+cmd_getPos BYTE "status mySong position", 0
+cmd_setPos BYTE "seek mySong to %d", 0
+cmd_setStart BYTE "seek mySong to start", 0	
+cmd_setVol BYTE "setaudio mySong volume to %d",0
+;----------------------
+
+mciCommand BYTE ?
+playState BYTE 0
 
 handler HANDLE ? ; ÎÄ¼þ¾ä±ú
 divideLine byte 0ah ; »»ÐÐdivideLine
@@ -194,6 +246,8 @@ ofnFilter byte "Media Files(*mp3, *wav)", 0, "*.mp3;*.wav", 0, 0
 deleteNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èµ¥£¬²»ÄÜÉ¾³ý¡£",0
 addNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èµ¥£¬²»ÄÜµ¼Èë¸èÇú¡£", 0
 deleteSongNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èÇú£¬²»ÄÜÉ¾³ý¡£", 0
+playSongNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èÇú£¬²»ÄÜ²¥·Å¡£", 0
+playSongInvalid byte "ÄúÑ¡ÖÐµÄ¸èÇú²»´æÔÚ£¬ÒÑ×Ô¶¯ÎªÄúÉ¾³ý²»´æÔÚµÄ¸èÇú¡£"
 
 
 ; +++++++++++++++³ÌÐòËùÐè²¿·Ö´°¿Ú±äÁ¿+++++++++++++++
@@ -211,6 +265,7 @@ hNewGroup dword ?
 readGroupDetailStr byte MAX_GROUP_DETAIL_LEN   dup(0)
 currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
+readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0
 
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
@@ -252,7 +307,7 @@ DialogMain proc,
 	local loword : word
 	local hiword : word
 
-	mov	eax, wParam
+	mov	eax, wParam ; WParam = (hiword, lowrd) : Ïê¼ûnotification code
 	mov	loword, ax
 ;	mov	hiword, 
 	shrd eax, ebx, 16
@@ -296,6 +351,10 @@ DialogMain proc,
 				invoke DeleteInvalidSongs, hWin
 				invoke ShowMainDialogView, hWin
 			.endif
+		.elseif loword == IDC_PLAY_BUTTON
+			.if hiword == BN_CLICKED
+				invoke PlayMusic, hWin
+			.endif
 		.else
 			; do something
 		.endif
@@ -316,32 +375,32 @@ DialogMain endp
 ImportSingleFile proc,
 	hWin : dword
 
-	.if currentPlayGroup == DEFAULT_SONG_GROUP
+	.if currentPlayGroup == DEFAULT_SONG_GROUP ; Èç¹ûµ±Ç°Î´Ñ¡Ôñ¸èµ¥£¬ÌáÊ¾´íÎó
 		invoke MessageBox, hWin, addr addNone, 0, MB_OK
 		ret
 	.endif
 
-	invoke  RtlZeroMemory, addr ofn, sizeof ofn ; fill with 0
+	invoke  RtlZeroMemory, addr ofn, sizeof ofn ; ½«OpenFileName½á¹¹ÌåÇå0
 
 	mov ofn.lStructSize, sizeof OPENFILENAME
 
 	push hWin
 	pop ofn.hwndOwner ; hwndOwner = hWin
 
-	mov ofn.lpstrTitle, OFFSET ofnTitle
-	mov ofn.lpstrInitialDir, OFFSET ofnInitialDir
-	mov	ofn.nMaxFile, MAX_FILE_LEN
-	mov	ofn.lpstrFile, OFFSET currentSongNameOFN
-	mov	ofn.lpstrFilter, offset ofnFilter
-	mov ofn.Flags, OFN_HIDEREADONLY
+	mov ofn.lpstrTitle, OFFSET ofnTitle ; ÉèÖÃ´ò¿ªÎÄ¼þ¼ÐµÄTirle
+	mov ofn.lpstrInitialDir, OFFSET ofnInitialDir ; ÉèÖÃÄ¬ÈÏ´ò¿ªÎÄ¼þ¼Ð
+	mov	ofn.nMaxFile, MAX_FILE_LEN ; ÉèÖÃÎÄ¼þÃûµÄ³¤¶È
+	mov	ofn.lpstrFile, OFFSET currentSongNameOFN  ; ÉèÖÃÐèÒª´ò¿ªµÄÎÄ¼þµÄÃû³ÆµÄÖ¸Õë
+	mov	ofn.lpstrFilter, offset ofnFilter ; ÉèÖÃ´ò¿ªÎÄ¼þÀàÐÍÏÞÖÆ
+	mov ofn.Flags, OFN_HIDEREADONLY ; Òþ²ØÒÔÖ»¶ÁÄ£Ê½´ò¿ªµÄ°´Å¥
 
-	invoke GetOpenFileName, addr ofn
+	invoke GetOpenFileName, addr ofn ; µ÷ÓÃ´ò¿ªÎÄ¼þµÄÏµÍ³¶Ô»°¿ò
 
-	.if eax == DO_NOTHING
+	.if eax == DO_NOTHING ;  todo: Èç¹ûÃ»´ò¿ª, Ö±½Óret
 		jmp EXIT_IMPORT
 	.endif
 
-	invoke AddSingleSongOFN, currentPlayGroup
+	invoke AddSingleSongOFN, currentPlayGroup ; Èç¹û´ò¿ª³É¹¦£¬ÄÇÃ´½«¸Ã¸èÇú¼ÓÈëµ±Ç°¸èµ¥
 
 EXIT_IMPORT:
 	xor eax, eax ; eax = 0
@@ -351,85 +410,86 @@ ImportSingleFile endp
 AddSingleSongOFN proc,
 	songGroup : dword
 
-	LOCAL BytesWritten : dword
-	LOCAL handler_saved : dword
-	LOCAL lpstrLength : dword
+	LOCAL BytesWritten : dword ; ÓÃÓÚÎÄ¼þÐ´ÈëµÄÖ¸Õë
+	LOCAL handler_saved : dword ; ±£´æhandler
+	LOCAL lpstrLength : dword ; Ãû³Æ³¤¶È
 
 
-	invoke GetGroupDetailInStr, songGroup
+	invoke GetGroupDetailInStr, songGroup ; »ñÈ¡dword songGroupµÄÓÃÓÚÐ´ÈëÎÄ¼þµÄstrÄ£Ê½
 
-    INVOKE  CreateFile,offset songData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    INVOKE  CreateFile,offset songData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªÎÄ¼þ
 	mov		handler, eax
 	mov		handler_saved, eax
 
-	invoke SetFilePointer, handler, 0, 0, FILE_END
+	invoke SetFilePointer, handler, 0, 0, FILE_END ; ½«Ö¸ÕëÒÆ¶¯µ½Ä©Î²
 
 	invoke lstrlen, ofn.lpstrFile
-	mov	 lpstrLength, eax
+	mov	 lpstrLength, eax ; ÉèÖÃopenfilenameÖÐÎÄ¼þÃû³Æ³¤¶È
 
-	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
-	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWritten, NULL
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL ; Ð´»»ÐÐ·û
+	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWritten, NULL ; Ð´song GroupµÄstrÄ£Ê½
 
-	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
-	invoke WriteFile, handler, ofn.lpstrFile, MAX_FILE_LEN, addr BytesWritten, NULL
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL ; Ð´»»ÐÐ·û
+	invoke WriteFile, handler, ofn.lpstrFile, MAX_FILE_LEN, addr BytesWritten, NULL ;Ð´µ±Ç°ÎÄ¼þµÄÂ·¾¶
 
-	invoke CloseHandle, handler_saved
+	invoke CloseHandle, handler_saved ; ¹Ø±Õµ±Ç°µÄÎÄ¼þ¾ä±ú
 
 	ret
 AddSingleSongOFN endp
 
 GetGroupDetailInStr proc,
 	songGroup : dword
-	invoke  RtlZeroMemory, addr groupDetailStr, sizeof groupDetailStr
-	invoke dw2a, songGroup, addr groupDetailStr
+	invoke  RtlZeroMemory, addr groupDetailStr, sizeof groupDetailStr ; clear groupDetailStr
+	invoke dw2a, songGroup, addr groupDetailStr ; ½«dword songGroupµÄstrÐÎÊ½´æ´¢ÔÚgroupDetailStrÖÐ
 	ret
 GetGroupDetailInStr endp
 
 GetCurrentGroupSong proc
-	invoke GetTargetGroupSong, currentPlayGroup, SAVE_TO_MAIN_DIALOG_GROUP
+	invoke GetTargetGroupSong, currentPlayGroup, SAVE_TO_MAIN_DIALOG_GROUP ; »ñÈ¡µ±Ç°²¥·ÅµÄ¸èµ¥µÄ¸èÇúÐÅÏ¢
 	ret
 GetCurrentGroupSong endp
 
 GetTargetGroupSong proc,
-	songGroup : dword,
-	saveTo : dword
+	songGroup : dword, ; »ñÈ¡ÄÄÒ»¸ö¸èµ¥
+	saveTo : dword ; ¶ÔÓ¦×ÅÄÄÒ»ÖÖ»ñÈ¡Ä£Ê½
+	; SAVE_TO_MAIN_DIALOG_GROUP : »ñÈ¡µ±Ç°²¥·ÅµÄ¸èµ¥
 
-	LOCAL BytesRead : dword
-	LOCAL handler_saved : dword
+	LOCAL BytesRead : dword ; ---
+	LOCAL handler_saved : dword ; ---
 	LOCAL lpstrLength : dword
 
 	LOCAL counter : dword
 
-    invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ª¸èµ¥¸èÇúÎÄ¼þ
 	mov		handler, eax
 
-	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP
+	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP ; Èç¹ûÊÇÒª»ñÈ¡µ±Ç°²¥·ÅµÄ¸èµ¥
 		mov	 esi, offset currentGroupSongs
 	.endif
 
 	mov	counter, 0
 REPEAT_READ:
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	.if BytesRead == 0
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	.if BytesRead == 0 ; ¶Áµ½ÎÄ¼þÄ©Î²£¬Ìø³ö
 		jmp END_READ
 	.endif
-	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ; ¶ÁgroupÐÅÏ¢
 
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL ; ¶ÁÎÄ¼þÂ·¾¶
 
-	invoke atol, addr readGroupDetailStr
-	.if eax > maxGroupId ; todo: may move to GetAllGroups
+	invoke atol, addr readGroupDetailStr ;×ª»»×Ö·û´®ÐÎÊ½µÄgroupÐÅÏ¢µ½dword
+	.if eax > maxGroupId ; ÉèÖÃµ±Ç°×î´óµÄmaxGroupId
 		mov maxGroupId, eax
 	.endif
-	.if eax == songGroup
+	.if eax == songGroup ; Èç¹û¶Áµ½µÄÕâÊ×¸èÊôÓÚÎÒÃÇÐèÒª²¥·ÅµÄ¸èµ¥
 		push esi
-		invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path
+		invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path ;½«readFilePathStr¼´¸èÇúµÄÂ·¾¶¸´ÖÆµ½currentGroupSongsµÄÏÂÒ»¸ö½á¹¹ÌåÖÐ
 		push songGroup
-		pop	(song ptr [esi]).groupid
+		pop	(song ptr [esi]).groupid ; ´æ´¢¶ÔÓ¦µÄgroup id
 		pop esi
-		add	esi, SIZE song
-		inc counter
+		add	esi, SIZE song ; µØÖ·ÒÆµ½currentPlaySongµÄÏÂÒ»¸östruct
+		inc counter ; ¼ÆÊýÆ÷+1
 	.endif
 	
 
@@ -437,9 +497,9 @@ REPEAT_READ:
 END_READ:
 	invoke CloseHandle, handler
 
-	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP 
+	.if saveTo == SAVE_TO_MAIN_DIALOG_GROUP  
 		push counter
-		pop numCurrentGroupSongs
+		pop numCurrentGroupSongs ; ½«¼ÆÊýÆ÷µÄÖµ´æ´¢ÖÁµ±Ç°¸èµ¥µÄ×ÜÊý
 	.endif
 
 	ret
@@ -447,7 +507,7 @@ GetTargetGroupSong endp
 
 CollectSongPath proc,
 	songPath : dword,
-	targetPath : dword
+	targetPath : dword ; ½«songPath¸´ÖÆµ½targetPath£¬Æä¸´ÖÆµÄÄÚÈÝÊÇÎÄ¼þ³¤¶È-1
 	
 	mov	esi, songPath
 	mov	edi, targetPath
@@ -462,15 +522,13 @@ ShowMainDialogView proc,
 	hWin : dword
 	LOCAL	counter : dword
 
-;	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr simpleText
-
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0
-	invoke GetCurrentGroupSong
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0 ; clear listboxÀïµÄÄÚÈÝ
+	invoke GetCurrentGroupSong ; »ñÈ¡µ±Ç°¸èµ¥µÄ¸èÇú
 
 	push numCurrentGroupSongs
-	pop	 counter
+	pop	 counter ; ÉèÖÃ¼ÆÊýÆ÷
 
-	mov		esi, offset currentGroupSongs
+	mov	esi, offset currentGroupSongs ; ÉèÖÃÖ¸Õë
 
 PRINT_LIST:
 	.if counter == 0
@@ -478,10 +536,11 @@ PRINT_LIST:
 	.endif
 
 	push esi
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr (song ptr [esi]).path 
+	invoke GetFileTitle, addr (song ptr [esi]).path, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_ADDSTRING, 0, addr readSongNameStr  ;½«Ãû³Æ¼ÓÈëlistbox
 	pop esi
 	add	esi, size song
-	dec counter
+	dec counter ; ¼ÆÊýÆ÷-1
 	jmp PRINT_LIST
 
 END_PRINT:
@@ -490,142 +549,143 @@ ShowMainDialogView endp
 
 SelectGroup proc,
 	hWin : dword
-	local indexToSet : dword
-	local BytesRead : dword
-	local handler_saved : dword
-	local counter : dword
+	local indexToSet : dword ; ±»Ñ¡ÔñµÄindex
+	local BytesRead : dword ; ¶ÁÈëÓÃÖ¸Õë
+	local handler_saved : dword ; ±£´æhandler
+	local counter : dword ; ¼ÆÊýÆ÷
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0
-	mov	indexToSet, eax
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0 
+	mov	indexToSet, eax ; »ñÈ¡µ±Ç°±»Ñ¡ÖÐµÄgroup index
 
-	.if eax == CB_ERR
-		mov currentPlayGroup, DEFAULT_SONG_GROUP
-		invoke SelectSong, hWin
+	.if eax == CB_ERR ; Èç¹ûÃ»ÓÐÑ¡ÖÐgroup
+		mov currentPlayGroup, DEFAULT_SONG_GROUP ; ÄÇÃ´ÉèÖÃÏÖÔÚÃ»ÓÐÑ¡ÖÐ¸èµ¥
+		invoke SelectSong, hWin ; Í¬Ê±ÉèÖÃÏÖÔÚÑ¡ÔñµÄ¸èÇú
 		ret
 	.endif
 
-    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªgroupdata.txt¶ÁÈ¡groupÏà¹ØµÄÐÅÏ¢
 	mov		handler, eax
 
-	mov		esi, 0
+	mov		esi, 0 ; ¼ÆÊýÆ÷Çå0
 
 REPEAT_READ:
-	push esi
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	.if BytesRead == 0
+	push esi ; ±£´æesi
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	.if BytesRead == 0 ; ¶Áµ½ÎÄ¼þÄ©Î²
 		jmp END_READ
 	.endif
-	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ; ¶ÁsongGroupµÄstrÐÎÊ½
 
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
-	pop esi
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL ; ¶ÁsongGroupµÄname
+	pop esi ; »Ö¸´esi
 
-	.if esi == indexToSet
-		invoke atol, addr readGroupDetailStr
-		mov currentPlayGroup, eax
-		jmp END_READ
+	.if esi == indexToSet ; ÕÒµ½ÁËµÚesi¸ö×é±ðÐÅÏ¢
+		invoke atol, addr readGroupDetailStr ; ½«songGroupµÄ±àºÅ´Óstr×ª»»Îªeax
+		mov currentPlayGroup, eax ; ÉèÖÃcurrentPlayGroup±àºÅ
+		jmp END_READ ;½áÊø
 	.endif
 	inc esi
 	jmp REPEAT_READ
 END_READ:
-	invoke CloseHandle, handler
-	
-	invoke SelectSong, hWin
-	xor eax, eax
+	invoke CloseHandle, handler ; ¹Ø±Õhandler
+
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0 ;Ä¬ÈÏÑ¡Ôñsong0
+	invoke SelectSong, hWin ; Ñ¡Ôñ¶ÔÓ¦µÄsong
+	xor eax, eax ; eax = 0
 	ret
 SelectGroup endp
 
 AddNewGroup proc,
 	hWin : dword
 
-	local handler_saved : dword
-	local BytesWritten : dword
+	local handler_saved : dword ; ---
+	local BytesWritten : dword ; ÓÃÓÚÐ´µÄÖ¸Õë
 
-    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªgroupdata.txt»ñÈ¡×é±ðÐÅÏ¢
 	mov		handler, eax
 	mov		handler_saved, eax
 
-	invoke SetFilePointer, handler, 0, 0, FILE_END
+	invoke SetFilePointer, handler, 0, 0, FILE_END ; ½«ÎÄ¼þÖ¸ÕëÒýÓÃµ½Ä©Î²
 
-	invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr
-	mov	readGroupNameStr, MAX_GROUP_NAME_LEN - 1
-	invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_GETLINE, 0, addr readGroupNameStr
+	invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr ; ¶ÔreadGroupNameStrÇøÓòÇå0
+	mov	readGroupNameStr, MAX_GROUP_NAME_LEN - 1 ;ÎªÁËÊ¹ÓÃEM_GELINE,½«readGroupNameStrµÄµÚÒ»¸öÎ»ÉèÖÃÎªÒª¶ÁÈ¡µÄ³¤¶È
+	invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_GETLINE, 0, addr readGroupNameStr ;»ñÈ¡edit controlÀïÓÃ»§ÊäÈëµÄÄÚÈÝ
 
-	add		maxGroupId, 1
-	invoke GetGroupDetailInStr, maxGroupId
+	add		maxGroupId, 1; Ôö´ómaxGroupId
+	invoke GetGroupDetailInStr, maxGroupId ; °ÑÕâ¸ö²»»áÖØ¸´µÄmaxGroupId·ÖÅä¸øÐÂµÄgroup
 
-	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
-	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL ; Ð´»»ÐÐ·û
+	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL ; Ð´groupµÄidµÄstrÐÎÊ½
 
-	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
-	invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
+	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL ; Ð´»»ÐÐ·û
+	invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL ; Ð´groupµÄname
 
-	invoke CloseHandle, handler_saved
+	invoke CloseHandle, handler_saved ; ¹Ø±Õhandler
 
-	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr ; Ôö¼ÓÕâ¸ö¸èµ¥Ñ¡Ôñµ½ÏÂÀ­¿ò
 
-	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_GETCOUNT, 0, 0
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_GETCOUNT, 0, 0 ; »ñÈ¡ÏÖÔÚÓÐ¶àÉÙ¸ö¸èµ¥
 	dec eax
-	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_SETCURSEL, eax, 0
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_SETCURSEL, eax, 0 ; ½«µ±Ç°Ñ¡ÔñµÄ¸èµ¥ÉèÖÃÎªÐÂ¼ÓÈëµÄÕâ¸ö£¨index = numGroup - 1£©
 
-	invoke SelectGroup, hMainDialog
+	invoke SelectGroup, hMainDialog ; Ñ¡Ôñµ±Ç°×é
 	ret
 AddNewGroup endp
 
 GetAllGroups proc,
 	hWin : dword
 
-	local BytesRead : dword
+	local BytesRead : dword ; ¶ÁÈëµÄÖ¸Õë
 
-    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªgroupData.txt»ñÈ¡×é±ðÐÅÏ¢
 	mov		handler, eax
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0 ; Çå¿ÕgroupÏÂÀ­¿ò
 REPEAT_READ:
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	.if BytesRead == 0
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	.if BytesRead == 0 ; ¶Áµ½ÎÄ¼þÄ©Î²£¬½áÊø
 		jmp END_READ
 	.endif
-	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ;¶Á×é±ðµÄid
 
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL; ¶ÁgroupµÄname
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr ; ½«groupµÄname¼ÓÈëÏÂÀ­¿ò
 
 	jmp REPEAT_READ
 END_READ:
-	invoke CloseHandle, handler
+	invoke CloseHandle, handler ; ¹Ø±Õhandler
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0
-	invoke SelectGroup, hWin
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0 ;Ä¬ÈÏÑ¡ÔñµÚ0¸ögroup
+	invoke SelectGroup, hWin; Ñ¡Ôñ¸Ãgroup
 
 	ret
 GetAllGroups endp
 
 StartAddNewGroup proc
-	invoke DialogBoxParam, hInstance, IDD_DIALOG_ADD_NEW_GROUP, 0, addr NewGroupMain, 0
+	invoke DialogBoxParam, hInstance, IDD_DIALOG_ADD_NEW_GROUP, 0, addr NewGroupMain, 0 ; ´ò¿ªÊäÈëÐÂ½¨¸èµ¥Ãû³ÆµÄ¶Ô»°¿ò
 	ret
 StartAddNewGroup endp
 
 NewGroupMain proc,
-	hWin : dword,
+	hWin : dword, 
 	uMsg : dword,
 	wParam : dword,
 	lParam : dword
 
 	.if	uMsg == WM_INITDIALOG
 		push hWin
-		pop hNewGroup
-		invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_LIMITTEXT, MAX_GROUP_NAME_LEN - 1, 0
+		pop hNewGroup ; ´æ´¢µ±Ç°¶Ô»°¿òµÄ¾ä±ú£¬ÒÔ±ãÔÚ¸¸´°¿Ú¹Ø±ÕÊ±¹Ø±Õ
+		invoke SendDlgItemMessage, hWin, IDC_NEW_GROUP_NAME, EM_LIMITTEXT, MAX_GROUP_NAME_LEN - 1, 0 ; ÉèÖÃÊäÈë¸èµ¥Ãû³ÆµÄedit controlµÄ³¤¶ÈÏÞÖÆ
 	.elseif	uMsg == WM_COMMAND
-		.if wParam == IDC_BUTTON_ADD_NEW_GROUP
-			invoke AddNewGroup, hWin
-			invoke EndDialog, hWin, 0
+		.if wParam == IDC_BUTTON_ADD_NEW_GROUP ; Èç¹ûÈ·ÈÏ¼ÓÈë¸èµ¥
+			invoke AddNewGroup, hWin ; ¼ÓÈë¸èµ¥
+			invoke EndDialog, hWin, 0 ; ¼ÓÈëÍê±Ï£¬¹Ø±Õ´°¿Ú
 		.endif
 	.elseif	uMsg == WM_CLOSE
-		mov hNewGroup, 0
+		mov hNewGroup, 0 ; ¹Ø±Õ´°¿Ú£¬²¢½«µ±Ç°¾ä±úÉèÎª0£¬±ÜÃâ±»¸¸´°¿ÚÖØ¸´¹Ø±Õ
 		invoke EndDialog,hWin,0
 	.else
 	.endif
@@ -634,56 +694,60 @@ NewGroupMain proc,
 	ret
 NewGroupMain endp
 
-DeleteCurrentGroup proc,
+DeleteCurrentGroup proc, ; É¾³ýµ±Ç°Ñ¡ÔñµÄ¸èµ¥
 	hWin : dword
 
-	local BytesRead : dword
-	local BytesWritten : dword
-	local currentSelect : dword
-	local counter : dword
+	local BytesRead : dword ; ÓÃÓÚ¶ÁµÄÖ¸Õë
+	local BytesWritten : dword ; ÓÃÓÚÐ´µÄÖ¸Õë
+	local currentSelect : dword ; µ±Ç°Ñ¡ÔñµÄÐèÒª±»É¾³ýµÄgroup
+	local counter : dword ; ¼ÆÊýÆ÷
 
-	invoke SelectGroup, hWin ; get current select group
-	.if currentPlayGroup == DEFAULT_SONG_GROUP
+	invoke SelectGroup, hWin ;¸üÐÂµ±Ç°Ñ¡ÔñµÄgroupÐÅÏ¢
+	.if currentPlayGroup == DEFAULT_SONG_GROUP ; Èç¹ûµ±Ç°Ã»ÓÐÑ¡Ôñ¸èµ¥£¬ÄÇÃ´ÌáÊ¾´íÎó
 		invoke MessageBox, hWin, addr deleteNone, 0, MB_OK
 		ret
 	.endif
 
-	invoke DeleteTargetSong, hWin, DELETE_ALL_SONGS_IN_GROUP, currentPlayGroup
+	invoke DeleteTargetSong, hWin, DELETE_ALL_SONGS_IN_GROUP, currentPlayGroup 
+	; µ÷ÓÃDeleteTargetSong, Ö¸¶¨method£¬É¾³ýÔÚµ±Ç°×é±ðÄÚµÄËùÓÐ¸èÇú¡£
+	; µ÷ÓÃºó£¬ËùÓÐÊôÓÚ¸Ã×éµÄ¸èÇúÔÚdata.txtÖÐ±»É¾³ý¡£
 
-    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
-	mov		handler, eax
-	mov		esi, offset delAllGroups
-	mov		counter, 0
+    invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªÎÄ¼þ
+	mov		handler, eax ; ±£´æhandler
+	mov		esi, offset delAllGroups ; ÉèÖÃesi´ÓdelAllGroups¿ªÊ¼Ð´
+
+	mov		counter, 0 ; ¼ÆÊýÆ÷Çå0
 REPEAT_READ:
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	.if BytesRead == 0
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	.if BytesRead == 0;¶Áµ½Ä©Î²
 		jmp END_READ
 	.endif
-	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ; ¶ÁgroupidµÄstrÐÎÊ½
 
-	invoke atol, addr readGroupDetailStr
-	mov (songgroup ptr [esi]).groupid, eax
+	invoke atol, addr readGroupDetailStr ;½«group id×ª»»Îªdword
+	mov (songgroup ptr [esi]).groupid, eax ;½«dwordÐÎÊ½µÄgroup id´æ½ødelAllGroups[]µÄ¶ÔÓ¦Î»ÖÃ
 
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	invoke ReadFile, handler, addr (songgroup ptr [esi]).groupname, MAX_GROUP_NAME_LEN, addr BytesRead, NULL
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	invoke ReadFile, handler, addr (songgroup ptr [esi]).groupname, MAX_GROUP_NAME_LEN, addr BytesRead, NULL ; ¶ÁgroupµÄname
 
-	add esi, size songgroup
-	add counter, 1
+	add esi, size songgroup ; ÒÆ¶¯µ½ÏÂÒ»¸ösonggroup½á¹¹ÌåÔÚdelAllGroupsÊý×éÖÐµÄÎ»ÖÃ
+	add counter, 1 ; ¼ÆÊýÆ÷+1
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler
 
-	mov		esi, offset delAllGroups
+	mov		esi, offset delAllGroups ;ÖØÐÂÉèÖÃesiµÄÖ¸ÕëÔÚdelAllGroupsµÄ¿ªÍ·
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0
-    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0 ; ÖØÖÃ×é±ðÑ¡ÔñÏÂÀ­¿òµÄÄÚÈÝ
+    invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªgroupdata.txtÎÄ¼þ
+	; ÕâÀïÑ¡Ôñcreate_always´ò¿ªÄ£Ê½£¬¿ÉÒÔ¸²¸ÇÖ®Ç°³Â¾ÉµÄgroupdataÐÅÏ¢
 	mov		handler, eax
-	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN
+	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN ; ½«ÎÄ¼þÖ¸ÕëÒÆ¶¯µ½¿ªÍ·
 
 REPEAT_WRITE:
-	mov	ebx, (songgroup ptr [esi]).groupid
-	.if ebx != currentPlayGroup
-		invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
+	mov	ebx, (songgroup ptr [esi]).groupid ; ÅÐ¶Ïµ±Ç°µÄ½á¹¹ÌåÊÇ·ñÎªÎÒÃÇÐèÒªÉ¾³ýµÄgroupid
+	.if ebx != currentPlayGroup ; Èç¹û²»ÊÇÎÒÃÇÒªÉ¾³ýµÄ, ½«ËüÐ´½øgroupdata
+		invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL 
 
 		invoke GetGroupDetailInStr, (songgroup ptr [esi]).groupid
 		invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN, addr BytesWritten, NULL
@@ -691,11 +755,11 @@ REPEAT_WRITE:
 		invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL
 		invoke WriteFile, handler, addr (songgroup ptr [esi]).groupname, MAX_GROUP_NAME_LEN, addr BytesWritten, NULL
 
-		invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr (songgroup ptr [esi]).groupname
+		invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_ADDSTRING, 0, addr (songgroup ptr [esi]).groupname ; ½«Ëü¸üÐÂ½øgroupµÄÏÂÀ­¿ò
 	.endif
 
-	sub counter, 1
-	add	esi, size songgroup
+	sub counter, 1 ; ¼ÆÊýÆ÷-1
+	add	esi, size songgroup ; ÒÆ¶¯esiÔÚdelAllGroupsÖÐµÄÎ»ÖÃ
 	.if counter ==  0
 		jmp END_WRITE
 	.endif
@@ -703,67 +767,71 @@ REPEAT_WRITE:
 END_WRITE:
 	invoke CloseHandle, handler
 
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0
-	invoke SelectGroup, hWin
-
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_SETCURSEL, 0, 0 ; Ä¬ÈÏÑ¡ÔñµÚ0¸ögroup
+	invoke SelectGroup, hWin ; ÉèÖÃgroup¼°ÆäËûÐÅÏ¢
 
 	ret
 DeleteCurrentGroup endp
 
-SelectSong proc,
+SelectSong proc, ; ÉèÖÃµ±Ç°²¥·ÅµÄ¸èÇú
 	hWin : dword
 
-	local indexToPlay : dword
+	local indexToPlay : dword ; µ±Ç°Ó¦¸Ã²¥·Å¸èÇúµÄindex
 
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0
-	.if eax == LB_ERR
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 ; »ñÈ¡µ±Ç°Ñ¡ÖÐµÄ¸èÇú
+	.if eax == LB_ERR ; Èç¹ûÃ»ÓÐÑ¡ÖÐ£¬ÄÇÃ´·µ»Ø
 		mov currentPlaySingleSongIndex, DEFAULT_PLAY_SONG
 		ret
 	.endif
 
-	mov	currentPlaySingleSongIndex, eax
+	mov	currentPlaySingleSongIndex, eax ; ½«index¼ÇÂ¼ÔÚcurrentPlaySingleSongIndexÉÏ
 
-	mov	ebx, size song
-	mul	ebx
+	mov	ebx, size song 
+	mul	ebx ;¼ÆËãÄ¿±êsongÔÚcurrentGroupSongsÖÐµÄÆ«ÒÆÁ¿
 
-	mov	esi, offset currentGroupSongs
+	mov	esi, offset currentGroupSongs ; ÉèÖÃsongGroupµÄÖ¸Õë
 	add	esi, eax
 
-	invoke CollectSongPath, addr (song ptr [esi]).path, addr currentPlaySingleSongPath
+	invoke CollectSongPath, addr (song ptr [esi]).path, addr currentPlaySingleSongPath ;¸´ÖÆµ±Ç°¸èÇúµÄÂ·¾¶µ½currentPlaySingleSongPath
 	ret
 SelectSong endp
 
 DeleteTargetSong proc,
-	hWin : dword,
-	method : dword,
-	songGroup : dword
+	hWin : dword, 
+	method : dword, ; Ö§³Ö¼¸ÖÖÉ¾³ýµÄmethod
+	songGroup : dword ; Ö¸¶¨DELETE_ALL_SONGS_IN_GROUP·½·¨ÖÐÉ¾³ýÄÄÒ»¸ögroup
 
 	local counter : dword
 	local BytesWrite : dword
 ;	index : dword
 
-	.if method == DELETE_CURRENT_PLAY_SONG 
+; ·ÖÎªÈýÖÖÉ¾³ýµÄmethod: 
+; DELETE_ALL_SONGS_IN_GROUP	:É¾³ýsongGroup(dword)ÀïµÄËùÓÐ¸è, ÐèÒªÖ¸¶¨songGroup
+; DELETE_CURRENT_PLAY_SONG	:É¾³ýÑ¡ÖÐµÄÄÇÊ×¸è£¨current play song£©
+; DELETE_INVALID			:É¾³ýËùÓÐ²»´æÔÚµÄÂ·¾¶¶ÔÓ¦µÄ¸è
+
+	.if method == DELETE_CURRENT_PLAY_SONG ; 
 		.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
-			invoke MessageBox, hWin, addr deleteSongNone, 0, MB_OK
+			invoke MessageBox, hWin, addr deleteSongNone, 0, MB_OK ;Èç¹ûÉ¾³ýµ±Ç°²¥·ÅµÄ¸èÇú£¬ÇÒµ±Ç°Ã»ÓÐ²¥·ÅµÄ¸èÇú£¬±¨´í
 			ret
 		.endif
 	.endif
 
 	.if method == DELETE_ALL_SONGS_IN_GROUP
 		.if songGroup == DEFAULT_SONG_GROUP
-			ret
+			ret ; Èç¹ûÉ¾³ýÒ»¸ö×é£¬ÇÒÕâ¸ö×é²»´æÔÚ£¬·µ»Ø
 		.endif
 	.endif
 
-	invoke GetAllSongInData
+	invoke GetAllSongInData ; »ñÈ¡ËùÓÐdata.txtÖÐµÄ¸èÇúÐÅÏ¢£¬´æ´¢ÔÚdelAllSongsÖ®ÖÐ
 	mov		counter, eax
 
-    invoke  CreateFile,offset songData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+    invoke  CreateFile,offset songData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ¶ÁÈ¡ËùÓÐµÄ¸èÇú
 	mov		handler, eax
 	mov		esi, offset delAllSongs
 
-	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN
-	mov		ecx, 0 ; ecx = indexcounter
+	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN ; ½«ÎÄ¼þÖ¸ÕëÒÆ¶¯µ½¿ªÍ·
+	mov		ecx, 0 ; ecx¼ÇÂ¼Ä¿Ç°ÊÇsongGroupµÄµÚecxÊ×¸è
 
 REPEAT_WRITE:
 	.if counter == 0
@@ -771,31 +839,31 @@ REPEAT_WRITE:
 	.endif
 	dec counter
 
-	mov edx, (song ptr [esi]).groupid
+	mov edx, (song ptr [esi]).groupid ; »ñÈ¡µ±Ç°¸èÇúµÄgroup
 	
 	.if edx == currentPlayGroup 
-		.if method == DELETE_CURRENT_PLAY_SONG 
-			.if ecx == currentPlaySingleSongIndex
-				add	esi, size song
-				inc ecx
+		.if method == DELETE_CURRENT_PLAY_SONG  ; Èç¹ûµ±Ç°¸èÇúÊôÓÚcurrentPlayGroup, ÇÒmethodÊ±DELETE_CURRENT_PLAY_SONG
+			.if ecx == currentPlaySingleSongIndex ; Èç¹ûÊÇµ±Ç°²¥·ÅµÄ¸èÇú
+				add	esi, size song 
+				inc ecx ; ¼ÆÊýÆ÷+1
 				jmp REPEAT_WRITE
 			.endif
-			inc ecx
+			inc ecx ; ¼ÆÊýÆ÷+1
 		.endif
 	.endif
 
-	.if edx == songGroup 
-		.if method == DELETE_ALL_SONGS_IN_GROUP
+	.if edx == songGroup  
+		.if method == DELETE_ALL_SONGS_IN_GROUP ; Èç¹ûµ±Ç°¸èÇúÊôÓÚsongGroup£¬ÇÒmethodÊÇDELETE_ALL_SONGS_IN_GROUP
 			add esi, size song
 			jmp REPEAT_WRITE
 		.endif
 	.endif
 
-	push ecx
+	push ecx ; ±£´æecx
 	.if method == DELETE_INVALID
 		push eax
 		invoke CheckFileExist, addr (song ptr [esi]).path
-		.if eax == FILE_NOT_EXIST
+		.if eax == FILE_NOT_EXIST ; Èç¹ûmethodÊÇDELETE_INVALIDÇÒµ±Ç°ÎÄ¼þ²»´æÔÚ
 			pop eax
 			add esi, size song
 			jmp REPEAT_WRITE
@@ -803,13 +871,14 @@ REPEAT_WRITE:
 		pop eax
 	.endif
 
+	;Èç¹û¸èÇú²»·ûºÏÉÏÊö¼¸ÖÖÇé¿ö£¬ÄÇÃ´±£´æËüµ½data.txt£¬Ò²¾ÍÊÇ²»É¾³ýËü
 	invoke WriteFile, handler, addr buffer, length divideLine,  addr BytesWrite, NULL
 	invoke GetGroupDetailInStr, (song ptr [esi]).groupid
 	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWrite, NULL
 
 	invoke WriteFile, handler, addr buffer, length divideLine,  addr BytesWrite, NULL
 	invoke WriteFile, handler, addr (song ptr [esi]).path, MAX_FILE_LEN, addr BytesWrite, NULL
-	pop ecx
+	pop ecx ; »Ö¸´ecx
 
 	add	esi, size song
 	jmp REPEAT_WRITE
@@ -818,52 +887,51 @@ END_WRITE:
 	ret
 DeleteTargetSong endp
 
-GetAllSongInData proc
+GetAllSongInData proc ; »ñÈ¡ËùÓÐµÄdata.txtÖÐµÄ¸èÇú
 
-	local BytesRead : dword
-	local counter : dword
-
-    invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0
+	local BytesRead : dword ; ¶ÁÓÃµÄÖ¸Õë
+	local counter : dword ; ¼ÆÊýÆ÷
+    invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; ´ò¿ªdata.txtÎÄ¼þ»ñÈ¡ËùÓÐ¸èÇúµÄÐÅÏ¢
 	mov		handler, eax
-	mov		esi, offset delAllSongs
+	mov		esi, offset delAllSongs ; ÉèÖÃdelAllSongsµÄÆ«ÒÆÁ¿esi
 
-	mov	counter, 0
+	mov	counter, 0 ; ¼ÆÊýÆ÷=0
 REPEAT_READ:
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL  ; ¶Á»»ÐÐ·û
 	.if BytesRead == 0
 		jmp END_READ
 	.endif
-	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ; ¶Ágroupid
 	invoke atol, addr readGroupDetailStr
 	mov	(song ptr [esi]).groupid, eax
 
-	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL
-	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; ¶Á»»ÐÐ·û
+	invoke ReadFile, handler, addr readFilePathStr, MAX_FILE_LEN, addr BytesRead, NULL ; ¶ÁÎÄ¼þµÄpath
 
 	push esi
-	invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path
+	invoke CollectSongPath, addr readFilePathStr, addr (song ptr [esi]).path ; ½«ÎÄ¼þµÄpath¸´ÖÆµ½delAllSongsÖÐ
 	pop esi
 
-	add	esi, size song
-	inc counter
+	add	esi, size song ; ÒÆ¶¯µ½ÏÂÒ»¸ödelAllSongsÖÐµÄ½á¹¹Ìå
+	inc counter ; ¼ÆÊýÆ÷+1
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler
 
-	mov	eax, counter
+	mov	eax, counter ;½«counter´æÈëeax£¬ÒÔÌáÊ¾callerÓÐ¶àÉÙ¸öÓÐÐ§µÄdata.txt
 	ret
 GetAllSongInData endp
 
 DeleteCurrentPlaySong proc,
 	hWin : dword
-	invoke DeleteTargetSong, hWin, DELETE_CURRENT_PLAY_SONG, 0
+	invoke DeleteTargetSong, hWin, DELETE_CURRENT_PLAY_SONG, 0 ; É¾³ýµ±Ç°²¥·ÅµÄ¸èÇú
 	ret
 DeleteCurrentPlaySong endp
 
 CheckFileExist proc,
 	targetPath : dword
 
-	invoke GetFileAttributes, targetPath
+	invoke GetFileAttributes, targetPath ; ÅÐ¶ÏÎÄ¼þÊÇ·ñ´æÔÚ
 	.if eax == INVALID_FILE_ATTRIBUTES
 		mov eax, FILE_NOT_EXIST
 	.else
@@ -875,7 +943,7 @@ CheckFileExist endp
 
 DeleteInvalidSongs proc,
 	hWin : dword
-	invoke DeleteTargetSong, hWin, DELETE_INVALID, 0
+	invoke DeleteTargetSong, hWin, DELETE_INVALID, 0 ; É¾³ýËùÓÐÎÞÐ§µÄ¸èÇú
 	ret
 DeleteInvalidSongs endp
 
@@ -954,4 +1022,56 @@ Paint proc,
 	ret
 Paint endp
 
+
+PlayMusic proc,
+	hWin : dword
+	; test
+	invoke CheckPlayCurrentSong, hWin
+	.if eax == 0
+		ret
+	.endif
+	; end test
+
+	.if playState == STATE_STOP ; µ±Ç°ÎªÍ£Ö¹×´Ì¬
+		mov playState, STATE_PLAY ; ×ª±äÎª²¥·ÅÌ¬
+	.elseif playState == STATE_PLAY ; µ±Ç°Îª²¥·ÅÌ¬
+		mov playState, STATE_PAUSE ; ×ª±äÎªÔÝÍ£Ì¬
+	.else ; µ±Ç°ÎªÔÝÍ£Ì¬
+		mov playState, STATE_PLAY ; ×ª±äÎª²¥·ÅÌ¬
+	.endif
+	ret 
+PlayMusic endp
+
+CollectSongName proc,
+	songPath : dword,
+	targetPath : dword ; ½«songPath¸´ÖÆµ½targetPath£¬Æä¸´ÖÆµÄÄÚÈÝÊÇ¸èÇúname×î´ó³¤¶È-1
+	
+	mov	esi, songPath
+	mov	edi, targetPath
+	mov	ecx, MAX_SONG_NAME_LEN - 1
+	cld
+	rep movsb
+	ret
+CollectSongName endp
+
+CheckPlayCurrentSong proc,
+	hWin : dword
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+		invoke MessageBox, hWin, addr playSongNone, 0, MB_OK
+		mov	eax, 0
+		ret
+	.endif
+	
+	invoke CheckFileExist, addr currentPlaySingleSongPath
+	.if eax == FILE_NOT_EXIST
+		invoke DeleteInvalidSongs, hWin
+		invoke MessageBox, hWin, addr playSongInvalid, 0, MB_OK
+		mov eax, 0
+		ret
+	.endif
+
+	mov	eax, 1
+	ret
+CheckPlayCurrentSong endp
 END WinMain
+
