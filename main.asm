@@ -30,10 +30,12 @@ IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; È·ÈÏ¼ÓÈëÐÂµÄ¸èµ¥
 IDC_DELETE_CURRENT_GROUP		equ 1027 ; É¾³ýµ±Ç°¸èµ¥µÄ°´Å¥
 IDC_DELETE_CURRENT_SONG			equ 1028 ; É¾³ýµ±Ç°¸èÇúµÄ°´Å¥
 IDC_DELETE_INVALID_SONGS		equ 1029 ; É¾³ýËùÓÐ·Ç·¨µÄ¸èÇú
-
-
-
-;---------------- process -------------
+IDC_BACKGROUND					equ 2001 ; ±³¾°Í¼²ã
+;--------------- image & icon ----------------
+IDB_BITMAP_START				equ 111
+IDB_BACKGROUND_BLUE             equ 115
+IDB_BACKGROUND_ORANGE           equ 116
+;---------------- process --------------------
 DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
 DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ ; todo : change 99824 to 0
 DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a larger num
@@ -143,8 +145,22 @@ CheckFileExist proto, ; ¶ÁÈ¡Ò»¸ö×Ö·û´®targetPath(pointer)£¬ÅÐ¶Ï¶ÔÓ¦µÄÎÄ¼þÊÇ·ñ´æÔ
 DeleteInvalidSongs proto,
 	hWin : dword
 	
-	
+ChangeTheme proto,	; ¸ü»»Æ¤·ô
+	hWin : dword
+; Êó±ê×ó¼üÊÂ¼þ
+LButtonDown proto, 
+	hWin : dword, 
+	wParam : dword, 
+	lParam : dword
 
+; ½çÃæ²¼¾Ö
+InitUI proto, 
+	hWin : dword, 
+	wParam : dword,
+	lParam : dword
+
+Paint proto, 
+	hWin :dword
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -206,11 +222,17 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; ++++++++Çë¸ù¾Ý×Ô¼ºµÄ»úÆ÷Â·¾¶ÐÞ¸Ä+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
+songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
 
+; Í¼Ïñ×ÊÔ´Êý¾Ý
+bmp_Start				dword	?
+bmp_Theme_Blue			dword	?	; À¶É«Ö÷Ìâ±³¾°
+bmp_Theme_Orange		dword	?	; ³ÈÉ«Ö÷Ìâ±³¾°
+
+curTheme	word	0	; µ±Ç°Ö÷Ìâ±àºÅ
 ; +++++++++++++++code++++++++++++++++++
 .code
 
@@ -237,6 +259,7 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
+		invoke InitUI, hWin, wParam, lParam
 		push hWin
 		pop hMainDialog
 		invoke GetAllGroups, hWin
@@ -276,6 +299,8 @@ DialogMain proc,
 		.else
 			; do something
 		.endif
+	.elseif uMsg == WM_LBUTTONDOWN	; ×ó¼ü°´ÏÂ
+		invoke LButtonDown, hWin, wParam, lParam
 	.elseif	uMsg == WM_CLOSE
 		invoke EndDialog,hWin,0
 		.if hNewGroup != 0
@@ -853,5 +878,80 @@ DeleteInvalidSongs proc,
 	invoke DeleteTargetSong, hWin, DELETE_INVALID, 0
 	ret
 DeleteInvalidSongs endp
+
+; Êó±ê×ó¼ü°´ÏÂÊÂ¼þ
+LButtonDown proc, 
+	hWin : dword, 
+	wParam : dword, 
+	lParam : dword
+
+	local @mouseX : word
+	local @mouseY : word
+	
+	mov eax, lParam
+;	mov	hiword, 
+	mov @mouseX, ax
+	shrd eax, ebx, 16
+	mov @mouseY, ax
+	.if @mouseX > 1033 && @mouseX < 1063 && @mouseY > 32 && @mouseY < 55
+		invoke EndDialog,hWin,0
+		.if hNewGroup != 0
+			invoke EndDialog, hNewGroup, 0
+		.endif
+	.elseif @mouseX > 989 && @mouseX < 1019 && @mouseY > 32 && @mouseY < 55
+		invoke ChangeTheme, hWin
+	.endif
+	ret
+LButtonDown endp
+;// Êó±ê×ó¼ü°´ÏÂÊÂ¼þ´¦Àíº¯Êý
+;void LButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {
+; mouseX = LOWORD(lParam);
+; mouseY = HIWORD(lParam);
+; mouseDown = true;
+; ½çÃæ²¼¾Öº¯Êý
+InitUI proc, 
+	hWin : dword, 
+	wParam : dword, 
+	lParam : dword
+	; ¼ÓÔØ²âÊÔÍ¼Æ¬
+	invoke LoadBitmap, hInstance, IDB_BITMAP_START
+	mov bmp_Start, eax
+	; ¼ÓÔØÖ÷Ìâ±³¾°Í¼Æ¬
+	invoke LoadBitmap, hInstance, IDB_BACKGROUND_BLUE
+	mov bmp_Theme_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_BACKGROUND_ORANGE
+	mov bmp_Theme_Orange, eax
+
+	; ²âÊÔÍ¼Æ¬·ÅÖÃµ½²âÊÔÔª¼þ
+	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
+;	mov eax, IMG_START
+;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
+;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
+	ret
+InitUI endp
+
+; ±ä¸üÖ÷Ìâ
+ChangeTheme proc, 
+	hWin : dword
+	mov ax, curTheme
+	inc ax
+	mov	bl, 2
+	div	bl
+	movzx ax, ah
+	mov curTheme, ax
+	.if curTheme == 1
+		invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Orange
+	.else
+		invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
+	.endif
+	ret
+ChangeTheme endp
+
+; »æÍ¼º¯Êý
+Paint proc, 
+	hWin : dword
+	local @ps : dword ;PAINTSTRUCT <>
+	ret
+Paint endp
 
 END WinMain
