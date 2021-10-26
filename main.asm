@@ -34,13 +34,26 @@ IDC_DELETE_CURRENT_GROUP		equ 1027 ; 删除当前歌单的按钮
 IDC_DELETE_CURRENT_SONG			equ 1028 ; 删除当前歌曲的按钮
 IDC_DELETE_INVALID_SONGS		equ 1029 ; 删除所有非法的歌曲
 IDC_PLAY_BUTTON                 equ 1030 ; 播放/暂停按钮
-IDC_PRE_BUTTON                  equ 1032 ; 上一首
-IDC_NEXT_BUTTON                 equ 1033 ; 下一首
+IDC_PRE_BUTTON                  equ 1031 ; 上一首
+IDC_NEXT_BUTTON                 equ 1032 ; 下一首
+
+IDC_SOUND						equ 1038 ; 音量进度条
+IDC_FAST_FORWARD				equ 1041 ; 快进按钮
+IDC_FAST_BACKWARD				equ 1042 ; 快退按钮
+IDC_MUTE_SONG                   equ 1043 ; 完全静音按钮
+IDC_CHANGE_MODE                 equ 1044 ; 切换播放顺序按钮
+IDC_SONG_LOCATE                 equ 1045 ; 播放进度条
+IDC_COMPLETE_TIME_TEXT          equ 1047 ; 一共需要播放多少时间
+IDC_PLAY_TIME_TEXT              equ 1048 ; 已经播放了多少时间
+IDC_SOUND_TEXT                  equ 1049 ; 声音大小的文字
+IDC_CURRENT_STATIC              equ 1050 ; "当前播放的歌曲是"title
+IDC_CURRENT_PLAY_SONG_TEXT      equ 1051 ; 当前播放的歌曲的展示
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
+IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
 ;--------------- image & icon ----------------
-IDB_BACKGROUND_BLUE             equ 119
-IDB_BACKGROUND_ORANGE           equ 120
+IDB_BACKGROUND_BLUE             equ 3001
+IDB_BACKGROUND_ORANGE           equ 3002
 ;---------------- process --------------------
 DO_NOTHING			equ 0 ; 特定的返回值标识
 DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号 ; todo : change 99824 to 0
@@ -279,9 +292,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -998,6 +1011,8 @@ InitUI endp
 ; 变更主题
 ChangeTheme proc, 
 	hWin : dword
+	ret
+;	tochange-tochange-tochange-tochange
 	mov ax, curTheme
 	inc ax
 	mov	bl, 2
@@ -1089,6 +1104,7 @@ CollectSongName proc,
 	mov	edi, targetPath
 	mov	ecx, MAX_SONG_NAME_LEN - 1
 	cld
+	mov ax, curTheme
 	rep movsb
 	ret
 CollectSongName endp
