@@ -39,9 +39,8 @@ IDC_NEXT_BUTTON                 equ 1033 ; 下一首
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 ;--------------- image & icon ----------------
-IDB_BITMAP_START				equ 111
-IDB_BACKGROUND_BLUE             equ 115
-IDB_BACKGROUND_ORANGE           equ 116
+IDB_BACKGROUND_BLUE             equ 119
+IDB_BACKGROUND_ORANGE           equ 120
 ;---------------- process --------------------
 DO_NOTHING			equ 0 ; 特定的返回值标识
 DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号 ; todo : change 99824 to 0
@@ -278,7 +277,6 @@ testint byte "TEST INT: %d", 0ah, 0dh, 0
 groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
 
 ; 图像资源数据
-bmp_Start				dword	?
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
 bmp_Theme_Orange		dword	?	; 橙色主题背景
 
@@ -956,12 +954,12 @@ LButtonDown proc,
 	mov @mouseX, ax
 	shrd eax, ebx, 16
 	mov @mouseY, ax
-	.if @mouseX > 1033 && @mouseX < 1063 && @mouseY > 32 && @mouseY < 55
+	.if @mouseX > 1023 && @mouseX < 1053 && @mouseY > 32 && @mouseY < 55
 		invoke EndDialog,hWin,0
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
-	.elseif @mouseX > 989 && @mouseX < 1019 && @mouseY > 32 && @mouseY < 55
+	.elseif @mouseX > 982 && @mouseX < 1012 && @mouseY > 32 && @mouseY < 55
 		invoke ChangeTheme, hWin
 	.endif
 	ret
@@ -976,9 +974,6 @@ InitUI proc,
 	hWin : dword, 
 	wParam : dword, 
 	lParam : dword
-	; 加载测试图片
-	invoke LoadBitmap, hInstance, IDB_BITMAP_START
-	mov bmp_Start, eax
 	; 加载主题背景图片
 	invoke LoadBitmap, hInstance, IDB_BACKGROUND_BLUE
 	mov bmp_Theme_Blue, eax
