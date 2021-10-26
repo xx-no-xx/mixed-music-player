@@ -182,6 +182,13 @@ InitUI proto,
 PlayMusic proto, ; 播放/暂停音乐	
 	hWin : dword
 
+PauseCurrentSong proto ; 暂停当前音乐
+
+PlayCurrentSong proto, ; 从头播放当前音乐
+	hWin : dword 
+
+ResumeCurrentSong proto ; 继续当前音乐
+
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 	hWin : dword
 ; eax = 0 代表不能够播放（1.没选中歌曲，2.歌曲不存在）
@@ -207,8 +214,8 @@ cmd_setStart BYTE "seek mySong to start", 0
 cmd_setVol BYTE "setaudio mySong volume to %d",0
 ;----------------------
 
-mciCommand BYTE ?
-playState BYTE 0
+mciCommand BYTE 200 DUP(0)
+playState BYTE 2
 
 handler HANDLE ? ; 文件句柄
 divideLine byte 0ah ; 换行divideLine
@@ -272,9 +279,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1012,9 +1019,51 @@ Paint proc,
 	ret
 Paint endp
 
+PauseCurrentMusic proc
+	.if playState == STATE_PAUSE ; 若已暂停则返回
+		ret
+	.endif 
+
+	mov playState, STATE_PAUSE ; 转变为暂停态
+	invoke mciExecute, ADDR cmd_pause
+	ret
+	;修改图标
+PauseCurrentMusic endp 
+
+ResumeCurrentSong proc
+	.if playState == STATE_PLAY ; 若正在播放则返回
+		ret
+	.endif
+
+	mov playState, STATE_PLAY ; 转变为播放态
+	invoke mciExecute, ADDR cmd_resume
+	ret
+	;修改图标
+ResumeCurrentSong endp
+
+PlayCurrentSong proc,
+    hWin : dword
+	; test
+	invoke CheckPlayCurrentSong, hWin
+	.if eax == 0
+		ret
+	.endif
+	; end test
+
+	.if playState != STATE_STOP
+		invoke mciExecute, ADDR cmd_close
+	.endif
+
+	mov playState, STATE_PLAY ; 转变为播放态
+	invoke wsprintf, ADDR mciCommand, ADDR cmd_open, ADDR currentPlaySingleSongPath
+	invoke mciExecute, ADDR mciCommand
+	invoke mciExecute, ADDR cmd_play
+	ret
+	;修改图标
+PlayCurrentSong endp
 
 PlayMusic proc,
-	hWin : dword
+    hWin : dword 
 	; test
 	invoke CheckPlayCurrentSong, hWin
 	.if eax == 0
@@ -1023,11 +1072,11 @@ PlayMusic proc,
 	; end test
 
 	.if playState == STATE_STOP ; 当前为停止状态
-		mov playState, STATE_PLAY ; 转变为播放态
+		invoke PlayCurrentSong, hWin
 	.elseif playState == STATE_PLAY ; 当前为播放态
-		mov playState, STATE_PAUSE ; 转变为暂停态
-	.else ; 当前为暂停态
-		mov playState, STATE_PLAY ; 转变为播放态
+		invoke PauseCurrentMusic
+	.elseif playState == STATE_PAUSE ; 当前为暂停态
+		invoke ResumeCurrentSong
 	.endif
 	ret 
 PlayMusic endp
