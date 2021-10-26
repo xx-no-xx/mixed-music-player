@@ -9,6 +9,7 @@ include masm32.inc
 ; include comctl32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
+include gdi32.inc
 
 ; irvine32.inc
 
@@ -17,6 +18,7 @@ includelib user32.lib
 includelib kernel32.lib
 includelib comdlg32.lib
 includelib Winmm.lib
+includelib gdi32.lib
 
 .const
 
@@ -41,6 +43,11 @@ IDC_BACKGROUND					equ 2001 ; 背景图层
 ;--------------- image & icon ----------------
 IDB_BACKGROUND_BLUE             equ 119
 IDB_BACKGROUND_ORANGE           equ 120
+
+WINDOW_WIDTH					equ 1080 ; 窗口宽度
+WINDOW_HEIGHT					equ 675  ; 窗口高度
+PLAY_WIDTH						equ 40	 ; 播放键宽度
+NEXT_WIDTH						equ 30	 ; 下一首键宽度
 ;---------------- process --------------------
 DO_NOTHING			equ 0 ; 特定的返回值标识
 DEFAULT_SONG_GROUP  equ 99824 ; 默认组别被分配到的编号 ; todo : change 99824 to 0
@@ -365,6 +372,8 @@ DialogMain proc,
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
+	.elseif uMsg == WM_PAINT	; 绘图事件
+		invoke Paint, hWin
 	.else
 	.endif
 
@@ -961,12 +970,17 @@ LButtonDown proc,
 	mov @mouseX, ax
 	shrd eax, ebx, 16
 	mov @mouseY, ax
-	.if @mouseX > 1023 && @mouseX < 1053 && @mouseY > 32 && @mouseY < 55
+	; 在上半部分拖动窗口
+	.if @mouseY < 100
+		invoke SendMessage, hWin, WM_NCLBUTTONDOWN, HTCAPTION, 0
+	.endif
+	; 处理按钮
+	.if @mouseX > 1023 && @mouseX < 1053 && @mouseY > 27 && @mouseY < 52
 		invoke EndDialog,hWin,0
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
-	.elseif @mouseX > 982 && @mouseX < 1012 && @mouseY > 32 && @mouseY < 55
+	.elseif @mouseX > 982 && @mouseX < 1012 && @mouseY > 27 && @mouseY < 52
 		invoke ChangeTheme, hWin
 	.endif
 	ret
@@ -1015,7 +1029,40 @@ ChangeTheme endp
 ; 绘图函数
 Paint proc, 
 	hWin : dword
-	local @ps : dword ;PAINTSTRUCT <>
+	local @ps : PAINTSTRUCT
+	local @hdc_window : HDC
+	local @hdc_memBuffer : HDC
+	local @hdc_loadBmp : HDC
+	local @blankBmp : HBITMAP
+	
+	; 准备画家和画布
+	invoke RtlZeroMemory, addr @ps, sizeof @ps ; 将@ps结构体清0
+	invoke BeginPaint, hWin, addr @ps
+	mov @hdc_window, eax
+	invoke CreateCompatibleDC, @hdc_window
+	mov @hdc_memBuffer, eax
+	invoke CreateCompatibleDC, @hdc_window
+	mov @hdc_loadBmp, eax
+
+	; 初始化缓存
+	invoke CreateCompatibleBitmap, @hdc_window, WINDOW_WIDTH, WINDOW_HEIGHT
+	mov @blankBmp, eax
+	invoke SelectObject, @hdc_memBuffer, @blankBmp
+
+	; 绘制各种资源到缓存
+	; invoke SelectObject, @hdc_loadBmp, <target Bitmap>
+	; invoke BitBlt, @hdc_memBuffer, posX, posY, width, height, @hdc_loadBmp, 0, 0, SRCCOPY
+	
+	; 将缓存信息绘制到屏幕
+	invoke BitBlt, @hdc_window, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdc_memBuffer, 0, 0, SRCCOPY
+
+	; 回收资源所占内存
+	invoke DeleteObject, @blankBmp
+	invoke DeleteDC, @hdc_memBuffer
+	invoke DeleteDC, @hdc_loadBmp
+
+	; 结束绘制
+	invoke EndPaint, hWin, addr @ps
 	ret
 Paint endp
 
@@ -1113,4 +1160,3 @@ CheckPlayCurrentSong proc,
 	ret
 CheckPlayCurrentSong endp
 END WinMain
-
