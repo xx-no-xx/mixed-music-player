@@ -36,13 +36,29 @@ IDC_DELETE_CURRENT_GROUP		equ 1027 ; 删除当前歌单的按钮
 IDC_DELETE_CURRENT_SONG			equ 1028 ; 删除当前歌曲的按钮
 IDC_DELETE_INVALID_SONGS		equ 1029 ; 删除所有非法的歌曲
 IDC_PLAY_BUTTON                 equ 1030 ; 播放/暂停按钮
-IDC_PRE_BUTTON                  equ 1032 ; 上一首
-IDC_NEXT_BUTTON                 equ 1033 ; 下一首
+IDC_PRE_BUTTON                  equ 1031 ; 上一首
+IDC_NEXT_BUTTON                 equ 1032 ; 下一首
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 ;--------------- image & icon ----------------
 IDB_BACKGROUND_BLUE             equ 119
 IDB_BACKGROUND_ORANGE           equ 120
+IDB_PLAY_BLUE					equ 121
+IDB_PLAY_ORANGE					equ 122
+IDB_MUTE_BLUE                   equ 123
+IDB_MUTE_ORANGE                 equ 124
+IDB_NEXT_BLUE                   equ 125
+IDB_NEXT_ORANGE                 equ 126
+IDB_PRE_BLUE                    equ 127
+IDB_PRE_ORANGE                  equ 128
+IDB_RANDOM_BLUE                 equ 129
+IDB_RANDOM_ORANGE               equ 130
+IDB_SINGLE_BLUE                 equ 131
+IDB_SINGLE_ORANGE               equ 132
+IDB_SUSPEND_BLUE                equ 133
+IDB_SUSPEND_ORANGE              equ 134
+IDB_VOLUM_BLUE                  equ 135
+IDB_VOLUM_ORANGE                equ 136
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -195,6 +211,13 @@ InitUI proto,
 PlayMusic proto, ; 播放/暂停音乐	
 	hWin : dword
 
+PauseCurrentSong proto ; 暂停当前音乐
+
+PlayCurrentSong proto, ; 从头播放当前音乐
+	hWin : dword 
+
+ResumeCurrentSong proto ; 继续当前音乐
+
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 	hWin : dword
 ; eax = 0 代表不能够播放（1.没选中歌曲，2.歌曲不存在）
@@ -220,8 +243,8 @@ cmd_setStart BYTE "seek mySong to start", 0
 cmd_setVol BYTE "setaudio mySong volume to %d",0
 ;----------------------
 
-mciCommand BYTE ?
-playState BYTE 0
+mciCommand BYTE 200 DUP(0)
+playState BYTE 2
 
 handler HANDLE ? ; 文件句柄
 divideLine byte 0ah ; 换行divideLine
@@ -285,13 +308,29 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
 bmp_Theme_Orange		dword	?	; 橙色主题背景
+bmp_Play_Blue			dword	?	; 蓝色播放按钮
+bmp_Play_Orange			dword	?	; 橙色播放按钮
+bmp_Mute_Blue			dword	?	; 蓝色静音按钮
+bmp_Mute_Orange			dword	?	; 橙色静音按钮
+bmp_Next_Blue			dword	?	; 蓝色下一首按钮
+bmp_Next_Orange			dword	?	; 橙色下一首按钮
+bmp_Pre_Blue			dword	?	; 蓝色前一首按钮
+bmp_Pre_Orange			dword	?	; 橙色前一首按钮
+bmp_Random_Blue			dword	?	; 蓝色随机播放
+bmp_Random_Orange		dword	?	; 橙色随机播放
+bmp_Single_Blue			dword	?	; 蓝色单曲循环
+bmp_Single_Orange		dword	?	; 橙色单曲循环
+bmp_Suspend_Blue		dword	?	; 蓝色暂停
+bmp_Suspend_Orange		dword	?	; 橙色暂停
+bmp_Volum_Blue			dword	?	; 蓝色音量
+bmp_Volum_Orange		dword	?	; 橙色音量
 
 curTheme	word	0	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
@@ -1020,9 +1059,44 @@ InitUI proc,
 	mov bmp_Theme_Blue, eax
 	invoke LoadBitmap, hInstance, IDB_BACKGROUND_ORANGE
 	mov bmp_Theme_Orange, eax
-
+	; 加载图标
+	invoke LoadBitmap, hInstance, IDB_PLAY_BLUE
+	mov bmp_Play_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_PLAY_ORANGE
+	mov bmp_Play_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_MUTE_BLUE
+	mov bmp_Mute_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_MUTE_ORANGE
+	mov bmp_Mute_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_NEXT_BLUE
+	mov bmp_Next_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_NEXT_ORANGE
+	mov bmp_Next_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_PRE_BLUE
+	mov bmp_Pre_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_PRE_ORANGE
+	mov bmp_Pre_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_RANDOM_BLUE
+	mov bmp_Random_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_RANDOM_ORANGE
+	mov bmp_Random_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_SINGLE_BLUE
+	mov bmp_Single_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_SINGLE_ORANGE
+	mov bmp_Single_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_SUSPEND_BLUE
+	mov bmp_Suspend_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_SUSPEND_ORANGE
+	mov bmp_Suspend_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_VOLUM_BLUE
+	mov bmp_Volum_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_VOLUM_ORANGE
+	mov bmp_Volum_Orange, eax
 	; 测试图片放置到测试元件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
+	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Next_Blue
+	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Pre_Blue
 ;	mov eax, IMG_START
 ;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
 ;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
@@ -1086,9 +1160,51 @@ Paint proc,
 	ret
 Paint endp
 
+PauseCurrentMusic proc
+	.if playState == STATE_PAUSE ; 若已暂停则返回
+		ret
+	.endif 
+
+	mov playState, STATE_PAUSE ; 转变为暂停态
+	invoke mciExecute, ADDR cmd_pause
+	ret
+	;修改图标
+PauseCurrentMusic endp 
+
+ResumeCurrentSong proc
+	.if playState == STATE_PLAY ; 若正在播放则返回
+		ret
+	.endif
+
+	mov playState, STATE_PLAY ; 转变为播放态
+	invoke mciExecute, ADDR cmd_resume
+	ret
+	;修改图标
+ResumeCurrentSong endp
+
+PlayCurrentSong proc,
+    hWin : dword
+	; test
+	invoke CheckPlayCurrentSong, hWin
+	.if eax == 0
+		ret
+	.endif
+	; end test
+
+	.if playState != STATE_STOP
+		invoke mciExecute, ADDR cmd_close
+	.endif
+
+	mov playState, STATE_PLAY ; 转变为播放态
+	invoke wsprintf, ADDR mciCommand, ADDR cmd_open, ADDR currentPlaySingleSongPath
+	invoke mciExecute, ADDR mciCommand
+	invoke mciExecute, ADDR cmd_play
+	ret
+	;修改图标
+PlayCurrentSong endp
 
 PlayMusic proc,
-	hWin : dword
+    hWin : dword 
 	; test
 	invoke CheckPlayCurrentSong, hWin
 	.if eax == 0
@@ -1097,11 +1213,11 @@ PlayMusic proc,
 	; end test
 
 	.if playState == STATE_STOP ; 当前为停止状态
-		mov playState, STATE_PLAY ; 转变为播放态
+		invoke PlayCurrentSong, hWin
 	.elseif playState == STATE_PLAY ; 当前为播放态
-		mov playState, STATE_PAUSE ; 转变为暂停态
-	.else ; 当前为暂停态
-		mov playState, STATE_PLAY ; 转变为播放态
+		invoke PauseCurrentMusic
+	.elseif playState == STATE_PAUSE ; 当前为暂停态
+		invoke ResumeCurrentSong
 	.endif
 	ret 
 PlayMusic endp
