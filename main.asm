@@ -33,21 +33,16 @@ IDC_BUTTON_ADD_NEW_GROUP		equ 1026 ; È·ÈÏ¼ÓÈëÐÂµÄ¸èµ¥
 IDC_DELETE_CURRENT_GROUP		equ 1027 ; É¾³ýµ±Ç°¸èµ¥µÄ°´Å¥
 IDC_DELETE_CURRENT_SONG			equ 1028 ; É¾³ýµ±Ç°¸èÇúµÄ°´Å¥
 IDC_DELETE_INVALID_SONGS		equ 1029 ; É¾³ýËùÓÐ·Ç·¨µÄ¸èÇú
-<<<<<<< HEAD
+IDC_PLAY_BUTTON                 equ 1030 ; ²¥·Å/ÔÝÍ£°´Å¥
+IDC_PRE_BUTTON                  equ 1032 ; ÉÏÒ»Ê×
+IDC_NEXT_BUTTON                 equ 1033 ; ÏÂÒ»Ê×
+
 IDC_BACKGROUND					equ 2001 ; ±³¾°Í¼²ã
 ;--------------- image & icon ----------------
 IDB_BITMAP_START				equ 111
 IDB_BACKGROUND_BLUE             equ 115
 IDB_BACKGROUND_ORANGE           equ 116
 ;---------------- process --------------------
-=======
-IDC_PLAY_BUTTON                 equ 1030 ; ²¥·Å/ÔÝÍ£°´Å¥
-IDC_PRE_BUTTON                  equ 1032 ; ÉÏÒ»Ê×
-IDC_NEXT_BUTTON                 equ 1033 ; ÏÂÒ»Ê×
-
-
-;---------------- process -------------
->>>>>>> origin
 DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
 DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ ; todo : change 99824 to 0
 DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a larger num
@@ -170,7 +165,7 @@ CheckFileExist proto, ; ¶ÁÈ¡Ò»¸ö×Ö·û´®targetPath(pointer)£¬ÅÐ¶Ï¶ÔÓ¦µÄÎÄ¼þÊÇ·ñ´æÔ
 DeleteInvalidSongs proto,
 	hWin : dword
 	
-<<<<<<< HEAD
+
 ChangeTheme proto,	; ¸ü»»Æ¤·ô
 	hWin : dword
 ; Êó±ê×ó¼üÊÂ¼þ
@@ -184,7 +179,7 @@ InitUI proto,
 	hWin : dword, 
 	wParam : dword,
 	lParam : dword
-=======
+
 PlayMusic proto, ; ²¥·Å/ÔÝÍ£ÒôÀÖ	
 	hWin : dword
 
@@ -193,7 +188,7 @@ CheckPlayCurrentSong proto, ; ÊÔÍ¼²¥·Åµ±Ç°µÄ¸èÇúcurrentPlaySingleSongPath
 ; eax = 0 ´ú±í²»ÄÜ¹»²¥·Å£¨1.Ã»Ñ¡ÖÐ¸èÇú£¬2.¸èÇú²»´æÔÚ£©
 ; eax = 1 ´ú±íµ±Ç°Ñ¡ÖÐÁË¸èÇúÇÒ¸èÇú´æÔÚ
 
->>>>>>> origin
+
 
 Paint proto, 
 	hWin :dword
