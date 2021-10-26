@@ -174,8 +174,14 @@ DeleteInvalidSongs proto,
 
 ChangeTheme proto,	; 更换皮肤
 	hWin : dword
+
 ; 鼠标左键事件
 LButtonDown proto, 
+	hWin : dword, 
+	wParam : dword, 
+	lParam : dword
+
+KeyDown proto, 
 	hWin : dword, 
 	wParam : dword, 
 	lParam : dword
@@ -320,6 +326,9 @@ DialogMain proc,
 		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
 		; do something
+	.elseif uMsg == WM_KEYDOWN
+		; DEBUG: 按下空格后被按钮截获
+		invoke KeyDown, hWin, wParam, lParam
 	.elseif	uMsg == WM_COMMAND
 		.if loword == IDC_FILE_SYSTEM
 			invoke ImportSingleFile, hWin
@@ -964,7 +973,7 @@ LButtonDown proc,
 	shrd eax, ebx, 16
 	mov @mouseY, ax
 	; 在上半部分拖动窗口
-	.if @mouseY < 100
+	.if @mouseY < 70
 		invoke SendMessage, hWin, WM_NCLBUTTONDOWN, HTCAPTION, 0
 	.endif
 	; 处理按钮
@@ -983,6 +992,24 @@ LButtonDown endp
 ; mouseX = LOWORD(lParam);
 ; mouseY = HIWORD(lParam);
 ; mouseDown = true;
+
+; 键盘按下事件处理
+KeyDown proc, 
+	hWin : dword, 
+	wParam : dword, 
+	lParam : dword
+	.if wParam == VK_SPACE
+		ret
+	.endif
+	ret
+KeyDown endp
+;// 键盘按下事件处理函数
+;void KeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {
+; switch (wParam) {
+; case VK_UP:
+;  keyUpDown = true;
+;  break;
+
 ; 界面布局函数
 InitUI proc, 
 	hWin : dword, 
