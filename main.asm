@@ -56,31 +56,42 @@ IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
 ;--------------- image & icon ----------------
 IDB_BACKGROUND_BLUE             equ 3001
 IDB_BACKGROUND_ORANGE           equ 3002
-IDB_PLAY_BLUE					equ 121
-IDB_PLAY_ORANGE					equ 122
-IDB_MUTE_BLUE                   equ 123
-IDB_MUTE_ORANGE                 equ 124
-IDB_NEXT_BLUE                   equ 125
-IDB_NEXT_ORANGE                 equ 126
-IDB_PRE_BLUE                    equ 127
-IDB_PRE_ORANGE                  equ 128
-IDB_RANDOM_BLUE                 equ 129
-IDB_RANDOM_ORANGE               equ 130
-IDB_SINGLE_BLUE                 equ 131
-IDB_SINGLE_ORANGE               equ 132
-IDB_SUSPEND_BLUE                equ 133
-IDB_SUSPEND_ORANGE              equ 134
-IDB_VOLUM_BLUE                  equ 135
-IDB_VOLUM_ORANGE                equ 136
 IDB_ADD_SONG_BLUE               equ 138
 IDB_ADD_SONG_ORANGE             equ 139
 IDB_CLEAN_SONG                  equ 140
 IDB_NEW_LIST                    equ 141
 IDB_REMOVE_LIST                 equ 142
 IDB_REMOVE_SONG                 equ 143
-IDB_LOOP_BLUE                   equ 144
-IDB_LOOP_ORANGE                 equ 145
+
 IDI_PLAY_BLUE                   equ 146
+
+IDI_BACKWARD_BLUE				equ 147
+IDI_BACKWARD_ORANGE             equ 175
+IDI_FORWARD_BLUE                equ 149
+IDI_FORWARD_ORANGE              equ 150
+IDI_LOOP_BLUE                   equ 151
+IDI_LOOP_ORANGE                 equ 152
+IDI_MUTE_BLUE                   equ 153
+IDI_MUTE_ORANGE                 equ 154
+IDI_NEXT_BLUE                   equ 155
+IDI_NEXT_ORANGE                 equ 156
+IDI_PLAY_ORANGE                 equ 158
+IDI_PRE_BLUE                    equ 159
+IDI_PRE_ORANGE                  equ 160
+IDI_RANDOM_BLUE                 equ 161
+IDI_RANDOM_ORANGE               equ 162
+IDI_SINGLE_BLUE                 equ 163
+IDI_SINGLE_ORANGE               equ 164
+IDI_SUSPEND_BLUE                equ 165
+IDI_SUSPEND_ORANGE              equ 166
+IDI_VOLUM_BLUE                  equ 167
+IDI_VOLUM_ORANGE                equ 168
+IDI_CLEAN_SONG					equ	176
+IDI_ADD_SONG_BLUE               equ	177
+IDI_ADD_SONG_ORANGE             equ	178
+IDI_NEW_LIST                    equ	179
+IDI_REMOVE_LIST                 equ	180
+IDI_REMOVE_SONG                 equ	181
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -346,32 +357,40 @@ groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
 bmp_Theme_Orange		dword	?	; 橙色主题背景
-bmp_Play_Blue			dword	?	; 蓝色播放按钮
-bmp_Play_Orange			dword	?	; 橙色播放按钮
-bmp_Mute_Blue			dword	?	; 蓝色静音按钮
-bmp_Mute_Orange			dword	?	; 橙色静音按钮
-bmp_Next_Blue			dword	?	; 蓝色下一首按钮
-bmp_Next_Orange			dword	?	; 橙色下一首按钮
-bmp_Pre_Blue			dword	?	; 蓝色前一首按钮
-bmp_Pre_Orange			dword	?	; 橙色前一首按钮
-bmp_Random_Blue			dword	?	; 蓝色随机播放
-bmp_Random_Orange		dword	?	; 橙色随机播放
-bmp_Single_Blue			dword	?	; 蓝色单曲循环
-bmp_Single_Orange		dword	?	; 橙色单曲循环
-bmp_Suspend_Blue		dword	?	; 蓝色暂停
-bmp_Suspend_Orange		dword	?	; 橙色暂停
-bmp_Volum_Blue			dword	?	; 蓝色音量
-bmp_Volum_Orange		dword	?	; 橙色音量
 bmp_Add_Song_Blue		dword	?	; 蓝色添加歌曲
 bmp_Add_Song_Orange		dword	?	; 橙色添加歌曲
 bmp_Clean_Song			dword	?	; 清除无效歌曲
 bmp_New_List			dword	?	; 新建歌单
 bmp_Remove_List			dword	?	; 删除歌单
 bmp_Remove_Song			dword	?	; 删除歌曲
-bmp_Loop_Blue			dword	?	; 蓝色顺序循环
-bmp_Loop_Orange			dword	?	; 橙色顺序循环
 ico_Play_Blue			dword	?	; 蓝色播放图标
-
+ico_Play_Orange         dword	?	; 橙色播放图标
+ico_Backward_Blue		dword	?	; 蓝色快退图标
+ico_Backward_Orange		dword	?	; 蓝色快退图标
+ico_Forward_Blue		dword	?	; 蓝色快进图标
+ico_Forward_Orange		dword	?	; 橙色快进图标
+ico_Loop_Blue			dword	?	; 蓝色循环图标
+ico_Loop_Orange			dword	?	; 橙色循环图标
+ico_Mute_Blue			dword	?	; 蓝色静音图标
+ico_Mute_Orange			dword	?	; 橙色静音图标
+ico_Next_Blue			dword	?	; 蓝色下一首图标
+ico_Next_Orange			dword	?	; 橙色下一首图标
+ico_Pre_Blue			dword	?	; 蓝色上一首图标
+ico_Pre_Orange			dword	?	; 橙色上一首图标
+ico_Random_Blue			dword	?	; 蓝色随机播放
+ico_Random_Orange		dword	?	; 橙色随机播放
+ico_Single_Blue			dword	?	; 蓝色单曲循环
+ico_Single_Orange		dword	?	; 橙色单曲循环
+ico_Suspend_Blue		dword	?	; 蓝色暂停
+ico_Suspend_Orange		dword	?	; 橙色暂停
+ico_Volum_Blue			dword	?	; 蓝色音量
+ico_Volum_Orange		dword	?	; 橙色音量
+ico_Clean_Song			dword	?	; 清除歌曲
+ico_Add_Song_Blue		dword	?	; 蓝色添加歌曲
+ico_Add_Song_Orange		dword	?	; 橙色添加歌曲
+ico_New_List			dword	?	; 新建歌单
+ico_Remove_List			dword	?	; 删除歌单
+ico_Remove_Song			dword	?	; 删除歌曲
 curTheme	word	0	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
 .code
@@ -1101,12 +1120,12 @@ LButtonDown proc,
 		invoke SendMessage, hWin, WM_NCLBUTTONDOWN, HTCAPTION, 0
 	.endif
 	; 处理按钮
-	.if @mouseX > 1023 && @mouseX < 1053 && @mouseY > 27 && @mouseY < 52
+	.if @mouseX > 771 && @mouseX < 791 && @mouseY > 19 && @mouseY < 39
 		invoke EndDialog,hWin,0
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
-	.elseif @mouseX > 982 && @mouseX < 1012 && @mouseY > 27 && @mouseY < 52
+	.elseif @mouseX > 739 && @mouseX < 759 && @mouseY > 19 && @mouseY < 39
 		invoke ChangeTheme, hWin
 	.endif
 	ret
@@ -1145,71 +1164,88 @@ InitUI proc,
 	invoke LoadBitmap, hInstance, IDB_BACKGROUND_ORANGE
 	mov bmp_Theme_Orange, eax
 	; 加载图标
-	invoke LoadBitmap, hInstance, IDB_PLAY_BLUE
-	mov bmp_Play_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_PLAY_ORANGE
-	mov bmp_Play_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_MUTE_BLUE
-	mov bmp_Mute_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_MUTE_ORANGE
-	mov bmp_Mute_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_NEXT_BLUE
-	mov bmp_Next_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_NEXT_ORANGE
-	mov bmp_Next_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_PRE_BLUE
-	mov bmp_Pre_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_PRE_ORANGE
-	mov bmp_Pre_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_RANDOM_BLUE
-	mov bmp_Random_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_RANDOM_ORANGE
-	mov bmp_Random_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_SINGLE_BLUE
-	mov bmp_Single_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_SINGLE_ORANGE
-	mov bmp_Single_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_SUSPEND_BLUE
-	mov bmp_Suspend_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_SUSPEND_ORANGE
-	mov bmp_Suspend_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_VOLUM_BLUE
-	mov bmp_Volum_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_VOLUM_ORANGE
-	mov bmp_Volum_Orange, eax
 	invoke LoadBitmap, hInstance, IDB_ADD_SONG_BLUE
 	mov bmp_Add_Song_Blue, eax
 	invoke LoadBitmap, hInstance, IDB_ADD_SONG_ORANGE
 	mov bmp_Add_Song_Orange, eax
-	invoke LoadBitmap, hInstance, IDB_CLEAN_SONG
-	mov bmp_Clean_Song, eax
 	invoke LoadBitmap, hInstance, IDB_NEW_LIST
 	mov bmp_New_List, eax
 	invoke LoadBitmap, hInstance, IDB_REMOVE_LIST
 	mov bmp_Remove_List, eax
 	invoke LoadBitmap, hInstance, IDB_REMOVE_SONG
 	mov bmp_Remove_Song, eax
-	invoke LoadBitmap, hInstance, IDB_LOOP_BLUE
-	mov bmp_Loop_Blue, eax
-	invoke LoadBitmap, hInstance, IDB_LOOP_ORANGE
-	mov bmp_Loop_Orange, eax
 
 	invoke LoadIcon, hInstance, IDI_PLAY_BLUE
 	mov ico_Play_Blue, eax
-
+	invoke LoadIcon, hInstance, IDI_PLAY_ORANGE
+	mov ico_Play_Orange, eax
+	invoke LoadIcon, hInstance, IDI_SUSPEND_BLUE
+	mov ico_Suspend_Blue, eax
+	invoke LoadIcon, hInstance, IDI_SUSPEND_ORANGE
+	mov ico_Suspend_Orange, eax
+	invoke LoadImage, hInstance, IDI_FORWARD_BLUE, IMAGE_ICON, 23, 23, NULL
+	mov ico_Forward_Blue, eax
+	invoke LoadImage, hInstance, IDI_FORWARD_ORANGE, IMAGE_ICON, 23, 23, NULL
+	mov ico_Forward_Orange, eax
+	invoke LoadImage, hInstance, IDI_BACKWARD_BLUE, IMAGE_ICON, 23, 23, NULL
+	mov ico_Backward_Blue, eax
+	invoke LoadImage, hInstance, IDI_BACKWARD_ORANGE, IMAGE_ICON, 23, 23, NULL
+	mov ico_Backward_Orange, eax
+	invoke LoadImage, hInstance, IDI_NEXT_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Next_Blue, eax
+	invoke LoadImage, hInstance, IDI_NEXT_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Next_Orange, eax
+	invoke LoadImage, hInstance, IDI_PRE_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Pre_Blue, eax
+	invoke LoadImage, hInstance, IDI_PRE_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Pre_Orange, eax
+	invoke LoadImage, hInstance, IDI_VOLUM_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Volum_Blue, eax
+	invoke LoadImage, hInstance, IDI_VOLUM_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Volum_Orange, eax
+	invoke LoadImage, hInstance, IDI_MUTE_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Mute_Blue, eax
+	invoke LoadImage, hInstance, IDI_MUTE_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Mute_Orange, eax
+	invoke LoadImage, hInstance, IDI_RANDOM_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Random_Blue, eax
+	invoke LoadImage, hInstance, IDI_RANDOM_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Random_Orange, eax
+	invoke LoadImage, hInstance, IDI_SINGLE_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Single_Blue, eax
+	invoke LoadImage, hInstance, IDI_SINGLE_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Single_Orange, eax
+	invoke LoadImage, hInstance, IDI_LOOP_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Loop_Blue, eax
+	invoke LoadImage, hInstance, IDI_LOOP_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Loop_Orange, eax
+	invoke LoadImage, hInstance, IDI_ADD_SONG_BLUE, IMAGE_ICON, 90, 25, NULL
+	mov ico_Add_Song_Blue, eax
+	invoke LoadImage, hInstance, IDI_ADD_SONG_ORANGE, IMAGE_ICON, 90, 25, NULL
+	mov ico_Add_Song_Orange, eax
+	invoke LoadImage, hInstance, IDI_NEW_LIST, IMAGE_ICON, 85, 22, NULL
+	mov ico_New_List, eax
+	invoke LoadImage, hInstance, IDI_REMOVE_LIST, IMAGE_ICON, 85, 22, NULL
+	mov ico_Remove_List, eax
+	invoke LoadImage, hInstance, IDI_REMOVE_SONG, IMAGE_ICON, 95, 25, NULL
+	mov ico_Remove_Song, eax
+	invoke LoadImage, hInstance, IDI_CLEAN_SONG, IMAGE_ICON, 120, 25, NULL
+	mov ico_Clean_Song, eax
 	; 测试图片放置到测试元件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
-	;invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
-	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Next_Blue
-	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Pre_Blue
-	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_New_List
-	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_List
-	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_BITMAP, bmp_Clean_Song
-	invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_BITMAP, bmp_Add_Song_Blue
-	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_Song
-	invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Mute_Blue
-	invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_BITMAP, bmp_Loop_Blue
+	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_ICON, ico_New_List
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_ICON, ico_Remove_List
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_ICON, ico_Clean_Song
+	invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Blue
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Remove_Song
+
 	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Blue
+	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Blue
+	invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Blue
+	invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Blue
+	invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
+	invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
 ;	mov eax, IMG_START
 ;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
 ;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
@@ -1329,14 +1365,14 @@ PlayMusic proc,
 	; end test
 
 	.if playState == STATE_STOP ; 当前为停止状态
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
 		invoke PlayCurrentSong, hWin
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PLAY ; 当前为播放态
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
 		invoke PauseCurrentMusic
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PAUSE ; 当前为暂停态
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
 		invoke ResumeCurrentSong
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Suspend_Blue
 	.endif
 	ret 
 PlayMusic endp

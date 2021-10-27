@@ -28,7 +28,34 @@
 #define IDB_REMOVE_SONG                 143
 #define IDB_LOOP_BLUE                   144
 #define IDB_LOOP_ORANGE                 145
-#define IDI_PLAT_BLUE                   146
+#define IDI_PLAY_BLUE                   146
+#define IDI_BACKWARD_BLUE               147
+#define IDI_FORWARD_BLUE                149
+#define IDI_FORWARD_ORANGE              150
+#define IDI_LOOP_BLUE                   151
+#define IDI_LOOP_ORANGE                 152
+#define IDI_MUTE_BLUE                   153
+#define IDI_MUTE_ORANGE                 154
+#define IDI_NEXT_BLUE                   155
+#define IDI_NEXT_ORANGE                 156
+#define IDI_PLAY_ORANGE                 158
+#define IDI_PRE_BLUE                    159
+#define IDI_PRE_ORANGE                  160
+#define IDI_RANDOM_BLUE                 161
+#define IDI_RANDOM_ORANGE               162
+#define IDI_SINGLE_BLUE                 163
+#define IDI_SINGLE_ORANGE               164
+#define IDI_SUSPEND_BLUE                165
+#define IDI_SUSPEND_ORANGE              166
+#define IDI_VOLUM_BLUE                  167
+#define IDI_VOLUM_ORANGE                168
+#define IDI_BACKWARD_ORANGE             175
+#define IDI_CLEAN_SONG                  176
+#define IDI_ADD_SONG_BLUE               177
+#define IDI_ADD_SONG_ORANGE             178
+#define IDI_NEW_LIST                    179
+#define IDI_REMOVE_LIST                 180
+#define IDI_REMOVE_SONG                 181
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_FILE_SYSTEM2                1002
 #define IDC_COMBO1                      1009
@@ -66,7 +93,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        147
+#define _APS_NEXT_RESOURCE_VALUE        182
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1054
 #define _APS_NEXT_SYMED_VALUE           101
