@@ -39,10 +39,23 @@ IDC_PLAY_BUTTON                 equ 1030 ; 播放/暂停按钮
 IDC_PRE_BUTTON                  equ 1031 ; 上一首
 IDC_NEXT_BUTTON                 equ 1032 ; 下一首
 
+IDC_SOUND						equ 1038 ; 音量进度条
+IDC_FAST_FORWARD				equ 1041 ; 快进按钮
+IDC_FAST_BACKWARD				equ 1042 ; 快退按钮
+IDC_MUTE_SONG                   equ 1043 ; 完全静音按钮
+IDC_CHANGE_MODE                 equ 1044 ; 切换播放顺序按钮
+IDC_SONG_LOCATE                 equ 1045 ; 播放进度条
+IDC_COMPLETE_TIME_TEXT          equ 1047 ; 一共需要播放多少时间
+IDC_PLAY_TIME_TEXT              equ 1048 ; 已经播放了多少时间
+IDC_SOUND_TEXT                  equ 1049 ; 声音大小的文字
+IDC_CURRENT_STATIC              equ 1050 ; "当前播放的歌曲是"title
+IDC_CURRENT_PLAY_SONG_TEXT      equ 1051 ; 当前播放的歌曲的展示
+
 IDC_BACKGROUND					equ 2001 ; 背景图层
+IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
 ;--------------- image & icon ----------------
-IDB_BACKGROUND_BLUE             equ 119
-IDB_BACKGROUND_ORANGE           equ 120
+IDB_BACKGROUND_BLUE             equ 3001
+IDB_BACKGROUND_ORANGE           equ 3002
 IDB_PLAY_BLUE					equ 121
 IDB_PLAY_ORANGE					equ 122
 IDB_MUTE_BLUE                   equ 123
@@ -59,6 +72,12 @@ IDB_SUSPEND_BLUE                equ 133
 IDB_SUSPEND_ORANGE              equ 134
 IDB_VOLUM_BLUE                  equ 135
 IDB_VOLUM_ORANGE                equ 136
+IDB_ADD_SONG_BLUE               equ 138
+IDB_ADD_SONG_ORANGE             equ 139
+IDB_CLEAN_SONG                  equ 140
+IDB_NEW_LIST                    equ 141
+IDB_REMOVE_LIST                 equ 142
+IDB_REMOVE_SONG                 equ 143
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -331,6 +350,12 @@ bmp_Suspend_Blue		dword	?	; 蓝色暂停
 bmp_Suspend_Orange		dword	?	; 橙色暂停
 bmp_Volum_Blue			dword	?	; 蓝色音量
 bmp_Volum_Orange		dword	?	; 橙色音量
+bmp_Add_Song_Blue		dword	?	; 蓝色添加歌曲
+bmp_Add_Song_Orange		dword	?	; 橙色添加歌曲
+bmp_Clean_Song			dword	?	; 清除无效歌曲
+bmp_New_List			dword	?	; 新建歌单
+bmp_Remove_List			dword	?	; 删除歌单
+bmp_Remove_Song			dword	?	; 删除歌曲
 
 curTheme	word	0	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
@@ -359,6 +384,7 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
+		invoke SetWindowPos, hWin, HWND_TOPMOST, 200, 100, 1080, 675, 0
 		invoke InitUI, hWin, wParam, lParam
 		push hWin
 		pop hMainDialog
@@ -1092,6 +1118,19 @@ InitUI proc,
 	mov bmp_Volum_Blue, eax
 	invoke LoadBitmap, hInstance, IDB_VOLUM_ORANGE
 	mov bmp_Volum_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_ADD_SONG_BLUE
+	mov bmp_Add_Song_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_ADD_SONG_ORANGE
+	mov bmp_Add_Song_Orange, eax
+	invoke LoadBitmap, hInstance, IDB_CLEAN_SONG
+	mov bmp_Clean_Song, eax
+	invoke LoadBitmap, hInstance, IDB_NEW_LIST
+	mov bmp_New_List, eax
+	invoke LoadBitmap, hInstance, IDB_REMOVE_LIST
+	mov bmp_Remove_List, eax
+	invoke LoadBitmap, hInstance, IDB_REMOVE_SONG
+	mov bmp_Remove_Song, eax
+
 	; 测试图片放置到测试元件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
 	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
@@ -1106,6 +1145,8 @@ InitUI endp
 ; 变更主题
 ChangeTheme proc, 
 	hWin : dword
+	ret
+;	tochange-tochange-tochange-tochange
 	mov ax, curTheme
 	inc ax
 	mov	bl, 2
@@ -1230,6 +1271,7 @@ CollectSongName proc,
 	mov	edi, targetPath
 	mov	ecx, MAX_SONG_NAME_LEN - 1
 	cld
+	mov ax, curTheme
 	rep movsb
 	ret
 CollectSongName endp
