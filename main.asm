@@ -80,6 +80,7 @@ IDB_REMOVE_LIST                 equ 142
 IDB_REMOVE_SONG                 equ 143
 IDB_LOOP_BLUE                   equ 144
 IDB_LOOP_ORANGE                 equ 145
+IDI_PLAY_BLUE                   equ 146
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -338,9 +339,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -369,6 +370,7 @@ bmp_Remove_List			dword	?	; 删除歌单
 bmp_Remove_Song			dword	?	; 删除歌曲
 bmp_Loop_Blue			dword	?	; 蓝色顺序循环
 bmp_Loop_Orange			dword	?	; 橙色顺序循环
+ico_Play_Blue			dword	?	; 蓝色播放图标
 
 curTheme	word	0	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
@@ -1192,9 +1194,12 @@ InitUI proc,
 	invoke LoadBitmap, hInstance, IDB_LOOP_ORANGE
 	mov bmp_Loop_Orange, eax
 
+	invoke LoadIcon, hInstance, IDI_PLAY_BLUE
+	mov ico_Play_Blue, eax
+
 	; 测试图片放置到测试元件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
-	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
+	;invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Next_Blue
 	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Pre_Blue
 	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_New_List
@@ -1204,6 +1209,7 @@ InitUI proc,
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_Song
 	invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Mute_Blue
 	invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_BITMAP, bmp_Loop_Blue
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
 ;	mov eax, IMG_START
 ;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
 ;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
@@ -1324,10 +1330,13 @@ PlayMusic proc,
 
 	.if playState == STATE_STOP ; 当前为停止状态
 		invoke PlayCurrentSong, hWin
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PLAY ; 当前为播放态
 		invoke PauseCurrentMusic
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PAUSE ; 当前为暂停态
 		invoke ResumeCurrentSong
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Suspend_Blue
 	.endif
 	ret 
 PlayMusic endp
