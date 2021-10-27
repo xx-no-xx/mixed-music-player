@@ -6,7 +6,7 @@ include windows.inc
 include user32.inc
 include kernel32.inc
 include masm32.inc
-; include comctl32.inc
+include comctl32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
 include gdi32.inc
@@ -237,6 +237,9 @@ PlayCurrentSong proto, ; 从头播放当前音乐
 
 ResumeCurrentSong proto ; 继续当前音乐
 
+AlterVolume proto, ; 调整音量大小
+	hWin : dword
+
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 	hWin : dword
 ; eax = 0 代表不能够播放（1.没选中歌曲，2.歌曲不存在）
@@ -262,8 +265,14 @@ cmd_setStart BYTE "seek mySong to start", 0
 cmd_setVol BYTE "setaudio mySong volume to %d",0
 ;----------------------
 
+rect RECT <0, 0, 1080, 675>
+
 mciCommand BYTE 200 DUP(0)
 playState BYTE 2
+volume DWORD 100
+isMuted BYTE 0
+
+intFormat BYTE "%d", 0
 
 handler HANDLE ? ; 文件句柄
 divideLine byte 0ah ; 换行divideLine
@@ -376,6 +385,7 @@ DialogMain proc,
 
 	local loword : word
 	local hiword : word
+	local currentSlider : dword
 
 	mov	eax, wParam ; WParam = (hiword, lowrd) : 详见notification code
 	mov	loword, ax
@@ -384,12 +394,44 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
-		invoke SetWindowPos, hWin, HWND_TOPMOST, 200, 100, 1080, 675, 0
+		; invoke SetWindowPos, hWin, HWND_TOPMOST, 200, 100, 1080, 675, 0
 		invoke InitUI, hWin, wParam, lParam
+;		invoke MoveWindow, hWin, 100, 100, 1080, 600, 0
+
+		invoke GetWindowRect, hWin, addr rect
+		;invoke 
+		invoke GetDlgItem, hWin, IDC_BACKGROUND ; 固定背景
+;		invoke GetWindowRect, eax, addr rect
+
+		mov	ecx, rect.right
+		sub ecx, rect.left
+		mov ebx, rect.bottom
+		sub ebx, rect.top
+
+		invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
+
+;		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
+;		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; 设置maingroup的左上角坐标+宽度于高度
+
+;		invoke GetDlgItem, hWin, IDC_SOUND
+;		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; 设置maingroup的左上角坐标+宽度于高度
+		; 根据test.rc的坐标＊2得到它再dialog里的相对坐标
+		; 添加一个偏移量以应对奇异的控件飘逸
+
+		; todo
 		push hWin
 		pop hMainDialog
 		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
+
+		;初始化音量条
+		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMIN, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMAX, 0, 1000
+		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, 1, 1000
+		;初始化音量值
+		mov volume, 1000
+		invoke wsprintf, addr mciCommand, addr intFormat, 100
+		invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
 		; do something
 	.elseif uMsg == WM_KEYDOWN
 		; DEBUG: 按下空格后被按钮截获
@@ -429,6 +471,11 @@ DialogMain proc,
 			.if hiword == BN_CLICKED
 				invoke PlayMusic, hWin
 			.endif
+		.elseif loword == IDC_MUTE_SONG
+			.if hiword == BN_CLICKED
+				xor isMuted, 1
+				invoke AlterVolume, hWin
+			.endif
 		.else
 			; do something
 		.endif
@@ -439,9 +486,15 @@ DialogMain proc,
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
 		.endif
-	.elseif uMsg == WM_PAINT	; 绘图事件
-		invoke Paint, hWin
-	.else
+	.elseif uMsg == WM_HSCROLL
+		invoke GetDlgCtrlID, lParam
+		mov currentSlider, eax ; 获取控件ID
+
+		.if currentSlider == IDC_SOUND
+			.if loword == SB_THUMBTRACK
+				invoke AlterVolume, hWin
+			.endif
+		.endif
 	.endif
 
 	xor eax, eax ; eax = 0
@@ -1136,6 +1189,10 @@ InitUI proc,
 	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Next_Blue
 	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Pre_Blue
+	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_New_List
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_List
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_BITMAP, bmp_Clean_Song
+;	invoke 
 ;	mov eax, IMG_START
 ;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
 ;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
@@ -1240,6 +1297,7 @@ PlayCurrentSong proc,
 	invoke wsprintf, ADDR mciCommand, ADDR cmd_open, ADDR currentPlaySingleSongPath
 	invoke mciExecute, ADDR mciCommand
 	invoke mciExecute, ADDR cmd_play
+	invoke AlterVolume, hWin
 	ret
 	;修改图标
 PlayCurrentSong endp
@@ -1262,6 +1320,28 @@ PlayMusic proc,
 	.endif
 	ret 
 PlayMusic endp
+
+AlterVolume proc,
+	hWin : dword
+	invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_GETPOS, 0, 0	;获取当前Slider位置
+	mov volume, eax
+
+	;在static text中显示音量数值
+	mov edx, 0
+	mov ebx, 10 
+	div ebx ; eax = volume / 10
+	invoke wsprintf, addr mciCommand, addr intFormat, eax
+	invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
+
+	.if isMuted == 0 ;当前是否静音
+		invoke wsprintf, addr mciCommand, addr cmd_setVol, volume
+	.else
+		invoke wsprintf, addr mciCommand, addr cmd_setVol, 0
+	.endif
+	invoke mciExecute, addr mciCommand ; 在MCI中改变音量
+	
+	ret
+AlterVolume endp
 
 CollectSongName proc,
 	songPath : dword,
