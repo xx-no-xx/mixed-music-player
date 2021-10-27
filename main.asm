@@ -301,9 +301,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1163,14 +1163,14 @@ AlterVolume proc,
 	div ebx ; eax = volume / 10
 	invoke wsprintf, addr mciCommand, addr intFormat, eax
 	invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
-
-	.if isMuted == 0 ;当前是否静音
-		invoke wsprintf, addr mciCommand, addr cmd_setVol, volume
-	.else
-		invoke wsprintf, addr mciCommand, addr cmd_setVol, 0
+	.if playState != STATE_STOP ; 没有音乐播放时，不改变MCI设备
+		.if isMuted == 0 ;当前是否静音
+			invoke wsprintf, addr mciCommand, addr cmd_setVol, volume
+		.else
+			invoke wsprintf, addr mciCommand, addr cmd_setVol, 0
+		.endif
+		invoke mciExecute, addr mciCommand ; 在MCI中改变音量
 	.endif
-	invoke mciExecute, addr mciCommand ; 在MCI中改变音量
-	
 	ret
 AlterVolume endp
 
