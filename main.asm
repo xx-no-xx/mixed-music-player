@@ -252,13 +252,17 @@ ResumeCurrentSong proto ; 继续当前音乐
 StopCurrentSong proto, ; 停止当前音乐
 	hWin : dword
 
+FastForward proto, ; 快进5s
+	hWin : dword
+
+FastBackward proto, ; 快退5s
+	hWin : dword
+
 AlterVolume proto, ; 调整音量大小
 	hWin : dword
 
 GetPlayPosition proto, ;获取播放位置
 	hWin : dword
-
-CheckPlayStatus proto ;检查播放状态：eax = 1 完成; eax = 0 未完成
 
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 	hWin : dword
@@ -386,9 +390,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -552,6 +556,14 @@ DialogMain proc,
 		.elseif loword == IDC_CHANGE_MODE
 			.if hiword == BN_CLICKED
 				invoke ChangeMode, hWin
+			.endif
+		.elseif loword == IDC_FAST_FORWARD
+			.if hiword == BN_CLICKED
+				invoke FastForward, hWin
+			.endif 
+		.elseif loword == IDC_FAST_BACKWARD
+			.if hiword == BN_CLICKED
+				invoke FastBackward, hWin
 			.endif
 		.else
 			; do something
@@ -1553,8 +1565,28 @@ AlterVolume proc,
 	ret
 AlterVolume endp
 
+SetTimeText proc,
+	hWin : dword
+	mov eax, currentPlaySingleSongPos
+	mov edx, 0
+	mov ebx, 1000 ;
+	div ebx ; eax 为秒数
+	mov edx, 0
+	mov ebx, 60 ; eax 为分钟数, edx为秒数 
+	div ebx
+	invoke wsprintf, addr mciCommand, addr timeFormat, eax, edx
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, addr mciCommand
+
+	ret
+SetTimeText endp
+
 GetPlayPosition proc,
 	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+	
 	;获取当前播放位置
 	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
 	invoke StrToInt, addr curPos
@@ -1572,18 +1604,84 @@ GetPlayPosition proc,
 	.endif
 
 	;设置PLAY_TIME_TEXT
-	mov eax, currentPlaySingleSongPos
-	mov edx, 0
-	mov ebx, 1000 ;
-	div ebx ; eax 为秒数
-	mov edx, 0
-	mov ebx, 60 ; eax 为分钟数, edx为秒数 
-	div ebx
-	invoke wsprintf, addr mciCommand, addr timeFormat, eax, edx
-	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, addr mciCommand
+	invoke SetTimeText, hWin
 
+	;检查歌曲是否结束
+	.if playState != STATE_STOP
+		mov eax, currentPlaySingleSongPos
+		.if eax >= currentPlaySingleSongLength
+			invoke PlayNextSong, hWin
+		.endif
+	.endif 
 	ret
 GetPlayPosition endp
+
+FastForward proc,
+	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+
+	;快进5s
+	mov eax, currentPlaySingleSongPos
+	add eax, 5000
+	.if eax > currentPlaySingleSongLength
+		mov eax, currentPlaySingleSongLength
+	.endif
+	mov currentPlaySingleSongPos, eax
+
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+
+	;设置PLAY_TIME_TEXT
+	invoke SetTimeText, hWin
+	
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+
+	;MCI跳转播放
+	.if eax != currentPlaySingleSongPos
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, currentPlaySingleSongPos
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif	
+	ret
+FastForward endp
+
+FastBackward proc,
+	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+
+	mov eax, currentPlaySingleSongPos
+	.if eax >= 5000
+		sub eax, 5000
+	.else
+		mov eax, 0
+	.endif
+	mov currentPlaySingleSongPos, eax
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+
+	;设置PLAY_TIME_TEXT
+	invoke SetTimeText, hWin
+	
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+
+	;MCI跳转播放
+	.if eax != currentPlaySingleSongPos
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, currentPlaySingleSongPos
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif
+	ret
+FastBackward endp
 
 CollectSongName proc,
 	songPath : dword,
