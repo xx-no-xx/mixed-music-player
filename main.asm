@@ -1332,14 +1332,14 @@ AlterVolume proc,
 	div ebx ; eax = volume / 10
 	invoke wsprintf, addr mciCommand, addr intFormat, eax
 	invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
-
-	.if isMuted == 0 ;当前是否静音
-		invoke wsprintf, addr mciCommand, addr cmd_setVol, volume
-	.else
-		invoke wsprintf, addr mciCommand, addr cmd_setVol, 0
+	.if playState != STATE_STOP ; 没有音乐播放时，不改变MCI设备
+		.if isMuted == 0 ;当前是否静音
+			invoke wsprintf, addr mciCommand, addr cmd_setVol, volume
+		.else
+			invoke wsprintf, addr mciCommand, addr cmd_setVol, 0
+		.endif
+		invoke mciExecute, addr mciCommand ; 在MCI中改变音量
 	.endif
-	invoke mciExecute, addr mciCommand ; 在MCI中改变音量
-	
 	ret
 AlterVolume endp
 
