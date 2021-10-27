@@ -1,46 +1,33 @@
 # mixed-music-player
 
-## 歌单数据的管理
+## 实现功能
 
-### API
+- [x] 把歌曲加入歌单
+- [x] 歌单管理，新建歌单
+- [x] 用户播放歌曲
+- [x] 上一首、下一首
+- [x] 删除歌曲
+- [x] 选中列表中任一首歌功能
+- [x] 检测失效歌曲并删除
+- [x] 系统在路径中寻找；找到，播放；没找到，提示 messagebox
+- [x] 歌单显示歌曲名称而不是路径
+- [ ] 一键添加特定文件夹下歌曲
+- [x] 播放器界面的设计，用户交互基础框架
+- [x] 音乐播放、暂停、上一首、下一首、选中列表中任一首歌界面的实现
+- [ ] 音乐播放、暂停、上一首、下一首、选中列表中任一首歌界面的实现（按钮美化）
+- [ ] 最近播放次数
+- [x] 静音模式的切换
+- [x] 音量条和音量控制的实现
+- [x] 进度条和进度控制的实现及优化
+- [x] 循环播放的实现
+- [ ] 记录播放次数，统计页面，
+- [ ] 歌词文件的读取和解析
+- [ ] 歌词的实时显示
+- [ ] 专辑图片（旋转）
+- [ ] 快捷键（多弄几个）
 
-详见proto部分。
-### 数据存储说明
-
-#### 歌曲无关的歌单数据
-
-TODO
-#### 歌曲数据
-
-歌曲数据（包括歌曲与它所属的歌单编号）被裸露地存储在./data.txt（目前不是data.txt，而是测试路径）
-以如下的格式：
-
-每个歌曲目前包括几行：
-
-```
-（换行符号）
-数字标识的歌单编号（换行符号）
-歌曲的路径
-```
-```
-e.g.
-
-99824  
-C:\Users\gassq\Desktop\114567630-1-208.mp3 
-99824 
-C:\Users\gassq\Desktop\goddhere.mp3  
-3231         
-C:\Users\gassq\Desktop\114567630-1-208.mp3 
-```
-
-注意事项：
-
-- 长度分别被补全为maxGroupDetailLength, maxFileLength; 便于读取时读取。
-
-- 如果一首歌属于多个组，它需要多次存储
-
-## 参考资料
-
-list box : https://docs.microsoft.com/en-us/windows/win32/winmsg/about-messages-and-message-queues
-
-list box control : https://docs.microsoft.com/en-us/windows/win32/controls/bumper-list-box-control-reference-notifications
+可选完成：
+---
+- [ ] 在GUI程序中实现歌单搜索，并将搜索结果展示在列表中
+- [ ] 歌曲显示多个信息（歌手专辑）
+- [ ] 歌单排序（时长，字符）

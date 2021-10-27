@@ -10,6 +10,7 @@ include comctl32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
 include gdi32.inc
+include shlwapi.inc
 
 ; irvine32.inc
 
@@ -19,6 +20,7 @@ includelib kernel32.lib
 includelib comdlg32.lib
 includelib Winmm.lib
 includelib gdi32.lib
+includelib Shlwapi.lib
 
 .const
 
@@ -109,9 +111,15 @@ STATE_PAUSE equ 0 ; 暂停播放
 STATE_PLAY equ 1 ; 正在播放
 STATE_STOP equ 2 ; 停止播放
 
+PLAY_PREVIOUS equ 0 ; 播放前一首
+PLAY_NEXT equ 1 ; 播放后一首
+
+MODE_LOOP equ 0 ; 歌单循环播放
+MODE_ONE equ 1 ; 单曲循环播放
+MODE_RANDOM equ 2 ; 随机播放
 
 DELETE_ALL_SONGS_IN_GROUP	equ 0 ;删除songGroup(dword)里的所有歌
-DELETE_CURRENT_PLAY_SONG	equ 1 ;删除选中的那首歌（current play song）
+DELETE_CURRENT_SELECT_SONG	equ 1 ;删除选中的那首歌（current play song）
 DELETE_INVALID				equ 2 ;删除所有不存在的路径对应的歌
 
 MAX_FILE_LEN equ 1000 ; 最长文件长度
@@ -187,9 +195,11 @@ AddNewGroup proto, ; 加入一个新的group
 DeleteCurrentGroup proto, ; 删除当前group
 	hWin : dword
 
-SelectSong proto, ; 选中当前播放的歌曲
+SelectSong proto, ; 更新当前选中的歌曲
 	hWin : dword
-; todo
+
+SelectPlaySong proto, ; 更新当前预备播放的歌曲
+	hWin : dword
 	
 DeleteTargetSong proto, ; 删除目标歌曲
 	hWin : dword,
@@ -197,7 +207,7 @@ DeleteTargetSong proto, ; 删除目标歌曲
 	songGroup : dword
 ; 分为三种删除的method: 
 ; DELETE_ALL_SONGS_IN_GROUP	:删除songGroup(dword)里的所有歌, 需要指定songGroup
-; DELETE_CURRENT_PLAY_SONG	:删除选中的那首歌（current play song）
+; DELETE_CURRENT_SELECT_SONG	:删除选中的那首歌（current play song）
 ; DELETE_INVALID			:删除所有不存在的路径对应的歌
 
 GetAllSongInData proto ; 将所有的歌曲存储至delAllSongs,
@@ -235,7 +245,6 @@ KeyDown proto,
 	wParam : dword, 
 	lParam : dword
 
-; 界面布局
 InitUI proto, 
 	hWin : dword, 
 	wParam : dword,
@@ -251,7 +260,19 @@ PlayCurrentSong proto, ; 从头播放当前音乐
 
 ResumeCurrentSong proto ; 继续当前音乐
 
+StopCurrentSong proto, ; 停止当前音乐
+	hWin : dword
+
+FastForward proto, ; 快进5s
+	hWin : dword
+
+FastBackward proto, ; 快退5s
+	hWin : dword
+
 AlterVolume proto, ; 调整音量大小
+	hWin : dword
+
+GetPlayPosition proto, ;获取播放位置
 	hWin : dword
 
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
@@ -259,10 +280,22 @@ CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 ; eax = 0 代表不能够播放（1.没选中歌曲，2.歌曲不存在）
 ; eax = 1 代表当前选中了歌曲且歌曲存在
 
-
-
 Paint proto, 
 	hWin :dword
+
+PlayNextSong proto, ; 播放下一首。如果当前没有选中歌曲，那么弹出message box
+	hWin : dword
+
+PlayPreviousSong proto, ; 播放上一首。如果当前没有选中歌曲，那么弹出message box
+	hWin : dword
+
+GetPreNxtSong proto, ; 更新选择上一首或者下一首。如果选中的这首歌不存在，那么提示信息。
+	hWin : dword,
+	method : dword
+
+ChangeMode proto, ; 切换模式
+	hWin : dword
+
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -281,18 +314,35 @@ cmd_setVol BYTE "setaudio mySong volume to %d",0
 
 rect RECT <0, 0, 1080, 675>
 
+randomTime SYSTEMTIME <>
+
+;--------播放状态-------
 mciCommand BYTE 200 DUP(0)
 playState BYTE 2
 volume DWORD 100
 isMuted BYTE 0
+isDragging BYTE 0
+curPos BYTE 32 DUP(0)
+curLen BYTE 32 DUP(0)
+;----------------------
 
+;------格式化输出-------
 intFormat BYTE "%d", 0
+timeFormat BYTE "%02d:%02d", 0
+;----------------------
+
+modePlay byte MODE_LOOP
 
 handler HANDLE ? ; 文件句柄
 divideLine byte 0ah ; 换行divideLine
 
+currentSelectSingleSongIndex dword DEFAULT_PLAY_SONG ;目前选中的歌曲信息
+currentSelectSingleSongPath byte MAX_FILE_LEN dup(0) ;目前选中的歌曲路径
+
 currentPlaySingleSongIndex dword DEFAULT_PLAY_SONG; 目前正在播放的歌曲信息
 currentPlaySingleSongPath byte MAX_FILE_LEN dup(0); 目前正在播放歌曲的路径
+currentPlaySingleSongLength dword 0               ; 目前正在播放歌曲的长度
+currentPlaySingleSongPos dword 0             ; 目前正在播放歌曲播放到的位置
 
 currentPlayGroup dword DEFAULT_SONG_GROUP ; 目前正在播放的歌单编号
 groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; 目前正在播放的歌单编号的str格式。 需要访问GetGroupDetailInStr以更新
@@ -304,6 +354,8 @@ currentGroupSongs song MAX_GROUP_SONG dup(<,>) ; 当前播放歌单的所有歌曲信息
 
 maxGroupId dword 0
 
+color_const COLORREF 778234
+
 ; ++++++++++++++删除功能引入的临时存储变量++++++++++++++
 ; ++++ 你不应在除了删除功能之外的函数访问这些变量 +++++++
 delAllGroups songgroup MAX_GROUP_NUM dup(<,>)
@@ -312,15 +364,16 @@ delAllSongs song MAX_ALL_SONG_NUM dup(<,>)
 ; ++++++++++++++导入文件OPpenFileName结构++++++++++++++
 ofn OPENFILENAME <>
 ofnTitle BYTE '导入音乐', 0	
-ofnFilter byte "Media Files(*mp3, *wav)", 0, "*.mp3;*.wav", 0, 0
+ofnFilter byte "Media Files(*.mp3, *.wav, *.mid, *.wmv)", 0, "*.mp3;*.wav;*.wma;*.mid", 0, 0
 
 ; ++++++++++++++Message Box 提示信息++++++++++++++++++
 deleteNone byte "您没有选中歌单，不能删除。",0
 addNone byte "您没有选中歌单，不能导入歌曲。", 0
 deleteSongNone byte "您没有选中歌曲，不能删除。", 0
 playSongNone byte "您没有选中歌曲，不能播放。", 0
-playSongInvalid byte "您选中的歌曲不存在，已自动为您删除不存在的歌曲。"
-
+playSongInvalid byte "您预计播放的歌曲不存在，已自动为您删除不存在的歌曲。", 0
+playPreNxtNone byte "您没有选中歌曲，不能播放上一首/下一首", 0
+nameNone byte "暂无歌曲", 0
 
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
 hInstance dword ?
@@ -339,9 +392,7 @@ currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0
-
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
-
 inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; to change "1" -> 0
 
@@ -350,9 +401,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -419,14 +470,11 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
-		; invoke SetWindowPos, hWin, HWND_TOPMOST, 200, 100, 1080, 675, 0
 		invoke InitUI, hWin, wParam, lParam
-;		invoke MoveWindow, hWin, 100, 100, 1080, 600, 0
 
+		; 固定背景bitmap
 		invoke GetWindowRect, hWin, addr rect
-		;invoke 
-		invoke GetDlgItem, hWin, IDC_BACKGROUND ; 固定背景
-;		invoke GetWindowRect, eax, addr rect
+		invoke GetDlgItem, hWin, IDC_BACKGROUND 
 
 		mov	ecx, rect.right
 		sub ecx, rect.left
@@ -435,17 +483,15 @@ DialogMain proc,
 
 		invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
 
-;		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
-;		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; 设置maingroup的左上角坐标+宽度于高度
+		; 设置初始播放歌曲的名称
+		invoke GetDlgItem, hWin, IDC_CURRENT_PLAY_SONG_TEXT 
+		invoke SetWindowText, eax, addr nameNone
 
-;		invoke GetDlgItem, hWin, IDC_SOUND
-;		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; 设置maingroup的左上角坐标+宽度于高度
-		; 根据test.rc的坐标＊2得到它再dialog里的相对坐标
-		; 添加一个偏移量以应对奇异的控件飘逸
-
-		; todo
+		; 获取窗口
 		push hWin
 		pop hMainDialog
+
+		; 获取所有的组别和歌曲
 		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
 
@@ -453,10 +499,24 @@ DialogMain proc,
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMIN, 0, 0
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMAX, 0, 1000
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, 1, 1000
+
 		;初始化音量值
 		mov volume, 1000
 		invoke wsprintf, addr mciCommand, addr intFormat, 100
 		invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
+		
+		;初始化Timer, 200ms间隔
+		invoke SetTimer, hWin, 1, 200, NULL
+
+		;初始化歌曲进度条
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+
+		;初始化歌曲时间
+		invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 		; do something
 	.elseif uMsg == WM_KEYDOWN
 		; DEBUG: 按下空格后被按钮截获
@@ -481,6 +541,9 @@ DialogMain proc,
 		.elseif loword == IDC_MAIN_GROUP
 			.if hiword == LBN_SELCHANGE
 				invoke SelectSong, hWin
+			.elseif hiword == LBN_DBLCLK
+				invoke SelectPlaySong, hWin
+				invoke PlayCurrentSong, hWin
 			.endif
 		.elseif loword == IDC_DELETE_CURRENT_SONG
 			.if hiword == BN_CLICKED
@@ -501,6 +564,26 @@ DialogMain proc,
 				xor isMuted, 1
 				invoke AlterVolume, hWin
 			.endif
+		.elseif loword == IDC_PRE_BUTTON
+			.if hiword == BN_CLICKED
+				invoke PlayPreviousSong, hWin
+			.endif
+		.elseif loword == IDC_NEXT_BUTTON
+			.if hiword == BN_CLICKED
+				invoke PlayNextSong, hWin
+			.endif
+		.elseif loword == IDC_CHANGE_MODE
+			.if hiword == BN_CLICKED
+				invoke ChangeMode, hWin
+			.endif
+		.elseif loword == IDC_FAST_FORWARD
+			.if hiword == BN_CLICKED
+				invoke FastForward, hWin
+			.endif 
+		.elseif loword == IDC_FAST_BACKWARD
+			.if hiword == BN_CLICKED
+				invoke FastBackward, hWin
+			.endif
 		.else
 			; do something
 		.endif
@@ -517,9 +600,19 @@ DialogMain proc,
 
 		.if currentSlider == IDC_SOUND
 			.if loword == SB_THUMBTRACK
-				invoke AlterVolume, hWin
+				invoke AlterVolume, hWin ;调整音量
 			.endif
+		.elseif currentSlider == IDC_SONG_LOCATE
+			.if loword == SB_THUMBTRACK ;拖动中
+				mov isDragging, 1
+			.elseif loword == SB_ENDSCROLL ;结束拖动
+				mov isDragging, 0
+			.endif 
 		.endif
+	.elseif uMsg == WM_TIMER ;时钟信号
+		invoke GetPlayPosition, hWin ;获取播放位置
+	.else
+		; do sth
 	.endif
 
 	xor eax, eax ; eax = 0
@@ -544,6 +637,7 @@ ImportSingleFile proc,
 	mov ofn.lpstrTitle, OFFSET ofnTitle ; 设置打开文件夹的Tirle
 	mov ofn.lpstrInitialDir, OFFSET ofnInitialDir ; 设置默认打开文件夹
 	mov	ofn.nMaxFile, MAX_FILE_LEN ; 设置文件名的长度
+	invoke RtlZeroMemory, addr currentSongNameOFN, sizeof currentSongNameOFN ; 清空文件名指针指向的字符串
 	mov	ofn.lpstrFile, OFFSET currentSongNameOFN  ; 设置需要打开的文件的名称的指针
 	mov	ofn.lpstrFilter, offset ofnFilter ; 设置打开文件类型限制
 	mov ofn.Flags, OFN_HIDEREADONLY ; 隐藏以只读模式打开的按钮
@@ -676,7 +770,7 @@ ShowMainDialogView proc,
 	hWin : dword
 	LOCAL	counter : dword
 
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0 ; clear listbox里的内容
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_RESETCONTENT, 0, 0 ; 清理当前歌单的歌曲
 	invoke GetCurrentGroupSong ; 获取当前歌单的歌曲
 
 	push numCurrentGroupSongs
@@ -743,9 +837,9 @@ REPEAT_READ:
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler ; 关闭handler
-
+	
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0 ;默认选择song0
-	invoke SelectSong, hWin ; 选择对应的song
+	invoke SelectPlaySong, hWin ; 选择（清空播放歌曲）
 	xor eax, eax ; eax = 0
 	ret
 SelectGroup endp
@@ -927,18 +1021,18 @@ END_WRITE:
 	ret
 DeleteCurrentGroup endp
 
-SelectSong proc, ; 设置当前播放的歌曲
+SelectSong proc, ; 设置当前选中的歌曲
 	hWin : dword
 
 	local indexToPlay : dword ; 当前应该播放歌曲的index
 
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 ; 获取当前选中的歌曲
 	.if eax == LB_ERR ; 如果没有选中，那么返回
-		mov currentPlaySingleSongIndex, DEFAULT_PLAY_SONG
+		mov currentSelectSingleSongIndex, DEFAULT_PLAY_SONG
 		ret
 	.endif
 
-	mov	currentPlaySingleSongIndex, eax ; 将index记录在currentPlaySingleSongIndex上
+	mov	currentSelectSingleSongIndex, eax ; 将index记录在currentSelectSingleSongIndex上
 
 	mov	ebx, size song 
 	mul	ebx ;计算目标song在currentGroupSongs中的偏移量
@@ -946,9 +1040,35 @@ SelectSong proc, ; 设置当前播放的歌曲
 	mov	esi, offset currentGroupSongs ; 设置songGroup的指针
 	add	esi, eax
 
-	invoke CollectSongPath, addr (song ptr [esi]).path, addr currentPlaySingleSongPath ;复制当前歌曲的路径到currentPlaySingleSongPath
+	invoke CollectSongPath, addr (song ptr [esi]).path, addr currentSelectSingleSongPath ;复制当前歌曲的路径到currentPlaySingleSongPath
 	ret
 SelectSong endp
+
+SelectPlaySong proc,; 设置当前正在播放的歌曲
+	hWin : dword
+
+	local indexToPlay : dword ; 当前应该播放歌曲的index
+	local staticWin : dword
+
+	invoke StopCurrentSong, hWin
+	invoke SelectSong, hWin
+
+	push currentSelectSingleSongIndex
+	pop currentPlaySingleSongIndex
+
+	invoke CollectSongPath, addr currentSelectSingleSongPath, addr currentPlaySingleSongPath ;复制当前歌曲的路径到currentPlaySingleSongPath
+
+	invoke GetDlgItem, hWin, IDC_CURRENT_PLAY_SONG_TEXT 
+	mov	staticWin, eax
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+		invoke SetWindowText, staticWin, addr nameNone
+	.else
+		invoke GetFileTitle, addr currentPlaySingleSongPath, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
+		invoke SetWindowText, staticWin, addr readSongNameStr
+	; readSongNameStr
+	.endif
+	ret
+SelectPlaySong endp
 
 DeleteTargetSong proc,
 	hWin : dword, 
@@ -957,17 +1077,34 @@ DeleteTargetSong proc,
 
 	local counter : dword
 	local BytesWrite : dword
+	local selectIndex : dword
+	local playIndex : dword
+	local playIndexadd1 : dword
 ;	index : dword
 
 ; 分为三种删除的method: 
 ; DELETE_ALL_SONGS_IN_GROUP	:删除songGroup(dword)里的所有歌, 需要指定songGroup
-; DELETE_CURRENT_PLAY_SONG	:删除选中的那首歌（current play song）
+; DELETE_CURRENT_SELECT_SONG	:删除选中的那首歌（current play song）
 ; DELETE_INVALID			:删除所有不存在的路径对应的歌
 
-	.if method == DELETE_CURRENT_PLAY_SONG ; 
-		.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+	invoke SelectSong, hWin ; 先更新当前选中的歌曲
+	push currentSelectSingleSongIndex
+	pop selectIndex
+
+	.if method == DELETE_CURRENT_SELECT_SONG ; 
+		invoke SelectSong, hWin ; 先更新当前选中的歌曲
+		push currentSelectSingleSongIndex
+		pop selectIndex ; 将这个指存储给selectIndex，以便后续使用
+		.if currentSelectSingleSongIndex == DEFAULT_PLAY_SONG
 			invoke MessageBox, hWin, addr deleteSongNone, 0, MB_OK ;如果删除当前播放的歌曲，且当前没有播放的歌曲，报错
 			ret
+		.endif
+		mov	eax, currentPlaySingleSongIndex
+		.if eax == currentSelectSingleSongIndex ; 如果删除歌曲是播放歌曲，那么停止它，然后清空焦点和播放
+			invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0
+			invoke SelectPlaySong, hWin
+		.elseif eax > currentSelectSingleSongIndex ; 如果删除歌曲，在播放歌曲之前，修改播放歌曲的index
+			sub currentPlaySingleSongIndex, 1 
 		.endif
 	.endif
 
@@ -975,6 +1112,14 @@ DeleteTargetSong proc,
 		.if songGroup == DEFAULT_SONG_GROUP
 			ret ; 如果删除一个组，且这个组不存在，返回
 		.endif
+	.endif
+
+	.if method == DELETE_INVALID
+		push currentPlaySingleSongIndex ; 如果是删除无效的方法，需要保留playIndex
+		pop playIndex
+		push playIndex
+		pop playIndexadd1
+		add playIndexadd1,  1 ; playIndexadd1 = playIndex + 1
 	.endif
 
 	invoke GetAllSongInData ; 获取所有data.txt中的歌曲信息，存储在delAllSongs之中
@@ -985,7 +1130,7 @@ DeleteTargetSong proc,
 	mov		esi, offset delAllSongs
 
 	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN ; 将文件指针移动到开头
-	mov		ecx, 0 ; ecx记录目前是songGroup的第ecx首歌
+	mov		ecx, 0 ; ecx记录目前是currentPlayGroup的第ecx首歌 ; 
 
 REPEAT_WRITE:
 	.if counter == 0
@@ -994,16 +1139,16 @@ REPEAT_WRITE:
 	dec counter
 
 	mov edx, (song ptr [esi]).groupid ; 获取当前歌曲的group
-	
+
 	.if edx == currentPlayGroup 
-		.if method == DELETE_CURRENT_PLAY_SONG  ; 如果当前歌曲属于currentPlayGroup, 且method时DELETE_CURRENT_PLAY_SONG
-			.if ecx == currentPlaySingleSongIndex ; 如果是当前播放的歌曲
-				add	esi, size song 
+		.if method == DELETE_CURRENT_SELECT_SONG  ; 如果当前歌曲属于currentPlayGroup, 且method时DELETE_CURRENT_SELECT_SONG
+			.if ecx == selectIndex ; 如果是当前select的歌曲
+				add	esi, size song  ; 删除它
 				inc ecx ; 计数器+1
 				jmp REPEAT_WRITE
 			.endif
-			inc ecx ; 计数器+1
 		.endif
+		inc ecx ; 计数器+1
 	.endif
 
 	.if edx == songGroup  
@@ -1013,18 +1158,30 @@ REPEAT_WRITE:
 		.endif
 	.endif
 
-	push ecx ; 保存ecx
+	push eax; 保存eax
 	.if method == DELETE_INVALID
-		push eax
+		push ecx ; 保存ecx
 		invoke CheckFileExist, addr (song ptr [esi]).path
+		pop ecx ; 恢复ecx
 		.if eax == FILE_NOT_EXIST ; 如果method是DELETE_INVALID且当前文件不存在
-			pop eax
+			.if ecx <= playIndex
+				sub currentPlaySingleSongIndex, 1 ; 如果删除的无效歌曲在playsong之前，给playsong的index - 1
+			.elseif ecx == playIndexadd1
+				push esi
+				push ecx
+				invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0
+				invoke SelectPlaySong, hWin ; 如果删除当前正在播放的无效歌曲，那么要清理播放相关的参数
+				pop ecx
+				pop esi
+			.endif
 			add esi, size song
+			pop eax ; 恢复eax
 			jmp REPEAT_WRITE
 		.endif
-		pop eax
 	.endif
+	pop eax ; 恢复eax
 
+	push ecx
 	;如果歌曲不符合上述几种情况，那么保存它到data.txt，也就是不删除它
 	invoke WriteFile, handler, addr buffer, length divideLine,  addr BytesWrite, NULL
 	invoke GetGroupDetailInStr, (song ptr [esi]).groupid
@@ -1078,7 +1235,7 @@ GetAllSongInData endp
 
 DeleteCurrentPlaySong proc,
 	hWin : dword
-	invoke DeleteTargetSong, hWin, DELETE_CURRENT_PLAY_SONG, 0 ; 删除当前播放的歌曲
+	invoke DeleteTargetSong, hWin, DELETE_CURRENT_SELECT_SONG, 0 ; 删除当前播放的歌曲
 	ret
 DeleteCurrentPlaySong endp
 
@@ -1311,7 +1468,7 @@ Paint proc,
 	ret
 Paint endp
 
-PauseCurrentMusic proc
+PauseCurrentSong proc
 	.if playState == STATE_PAUSE ; 若已暂停则返回
 		ret
 	.endif 
@@ -1320,7 +1477,27 @@ PauseCurrentMusic proc
 	invoke mciExecute, ADDR cmd_pause
 	ret
 	;修改图标
-PauseCurrentMusic endp 
+PauseCurrentSong endp 
+
+StopCurrentSong proc,
+	hWin : dword
+	.if playState != STATE_STOP
+		invoke mciExecute, ADDR cmd_close ; 关闭设备
+	.endif
+
+	mov playState, STATE_STOP ; 变为停止态
+
+	;初始化歌曲进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+
+	;初始化歌曲时间
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+	ret
+StopCurrentSong endp
 
 ResumeCurrentSong proc
 	.if playState == STATE_PLAY ; 若正在播放则返回
@@ -1351,8 +1528,33 @@ PlayCurrentSong proc,
 	invoke mciExecute, ADDR mciCommand
 	invoke mciExecute, ADDR cmd_play
 	invoke AlterVolume, hWin
-	ret
+
+	;设置进度
+
+	invoke mciSendString, ADDR cmd_getLen, ADDR curLen, 32, NULL ; 获取歌曲长度
+	invoke StrToInt, ADDR curLen
+	mov currentPlaySingleSongLength, eax
+
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, currentPlaySingleSongLength
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+	
+	;设置文本
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+
+	mov eax, currentPlaySingleSongLength
+	mov edx, 0
+	mov ebx, 1000 ;
+	div ebx ; eax 为秒数
+	mov edx, 0
+	mov ebx, 60 ; eax 为分钟数, edx为秒数 
+	div ebx
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, eax, edx
+	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 	;修改图标
+	ret
 PlayCurrentSong endp
 
 PlayMusic proc,
@@ -1399,6 +1601,124 @@ AlterVolume proc,
 	ret
 AlterVolume endp
 
+SetTimeText proc,
+	hWin : dword
+	mov eax, currentPlaySingleSongPos
+	mov edx, 0
+	mov ebx, 1000 ;
+	div ebx ; eax 为秒数
+	mov edx, 0
+	mov ebx, 60 ; eax 为分钟数, edx为秒数 
+	div ebx
+	invoke wsprintf, addr mciCommand, addr timeFormat, eax, edx
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, addr mciCommand
+
+	ret
+SetTimeText endp
+
+GetPlayPosition proc,
+	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+	
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+	mov currentPlaySingleSongPos, eax
+
+	;设置进度条
+	.if isDragging == 0 ; 未拖动
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+	.else ; 拖动
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_GETPOS, 0, 0
+		mov currentPlaySingleSongPos, eax
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, eax
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif
+
+	;设置PLAY_TIME_TEXT
+	invoke SetTimeText, hWin
+
+	;检查歌曲是否结束
+	.if playState != STATE_STOP
+		mov eax, currentPlaySingleSongPos
+		.if eax >= currentPlaySingleSongLength
+			invoke PlayNextSong, hWin
+		.endif
+	.endif 
+	ret
+GetPlayPosition endp
+
+FastForward proc,
+	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+
+	;快进5s
+	mov eax, currentPlaySingleSongPos
+	add eax, 5000
+	.if eax > currentPlaySingleSongLength
+		mov eax, currentPlaySingleSongLength
+	.endif
+	mov currentPlaySingleSongPos, eax
+
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+
+	;设置PLAY_TIME_TEXT
+	invoke SetTimeText, hWin
+	
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+
+	;MCI跳转播放
+	.if eax != currentPlaySingleSongPos
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, currentPlaySingleSongPos
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif	
+	ret
+FastForward endp
+
+FastBackward proc,
+	hWin : dword
+
+	.if playState == STATE_STOP
+		ret
+	.endif
+
+	mov eax, currentPlaySingleSongPos
+	.if eax >= 5000
+		sub eax, 5000
+	.else
+		mov eax, 0
+	.endif
+	mov currentPlaySingleSongPos, eax
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+
+	;设置PLAY_TIME_TEXT
+	invoke SetTimeText, hWin
+	
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+
+	;MCI跳转播放
+	.if eax != currentPlaySingleSongPos
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, currentPlaySingleSongPos
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif
+	ret
+FastBackward endp
+
 CollectSongName proc,
 	songPath : dword,
 	targetPath : dword ; 将songPath复制到targetPath，其复制的内容是歌曲name最大长度-1
@@ -1414,15 +1734,16 @@ CollectSongName endp
 
 CheckPlayCurrentSong proc,
 	hWin : dword
-	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG ; 判断要播放的歌是否选中
 		invoke MessageBox, hWin, addr playSongNone, 0, MB_OK
 		mov	eax, 0
 		ret
 	.endif
 	
-	invoke CheckFileExist, addr currentPlaySingleSongPath
+	invoke CheckFileExist, addr currentPlaySingleSongPath ; 判断要播放的歌是否路径存在
 	.if eax == FILE_NOT_EXIST
 		invoke DeleteInvalidSongs, hWin
+		invoke ShowMainDialogView, hWin
 		invoke MessageBox, hWin, addr playSongInvalid, 0, MB_OK
 		mov eax, 0
 		ret
@@ -1431,4 +1752,90 @@ CheckPlayCurrentSong proc,
 	mov	eax, 1
 	ret
 CheckPlayCurrentSong endp
+
+PlayNextSong proc,
+	hWin : dword
+	invoke GetPreNxtSong, hWin, PLAY_NEXT
+	ret
+PlayNextSong endp
+
+PlayPreviousSong proc,
+	hWin : dword
+	invoke GetPreNxtSong, hWin, PLAY_PREVIOUS
+	ret
+PlayPreviousSong endp
+
+GetPreNxtSong proc,
+	hWin : dword,
+	method : dword ; 播放前一首还是后一首
+
+	local indexToPlay : dword
+
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG ; 如果当前没有选中歌曲，返回错误
+		invoke MessageBox, hWin, addr playPreNxtNone, 0, MB_OK
+		ret
+	.endif
+
+;	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 
+;	mov	indexToPlay, eax ; indexToPlay = i 
+	push currentPlaySingleSongIndex
+	pop indexToPlay
+;	mov	currentPlaySingleIndex, indexToPlay
+
+	.if modePlay == MODE_LOOP
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
+		add indexToPlay, eax; indexToPlay = i + n
+		.if method == PLAY_NEXT 
+			add	indexToPlay, 1; indexToPlay = i + n + 1
+		.elseif method == PLAY_PREVIOUS
+			sub indexToPlay, 1; indexToPlay = i + n - 1
+		.endif
+	
+		.if indexToPlay >= eax  
+			sub indexToPlay, eax ; indexToPlay %= n
+			.if indexToPlay >= eax ; indexToPlay %= n
+				sub indexToPlay, eax
+			.endif
+		.endif
+	.elseif modePlay == MODE_ONE
+		; do nothing
+	.elseif modePlay == MODE_RANDOM
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
+		mov ebx, eax
+		invoke GetSystemTime, addr randomTime ; 使用系统时间生成伪随机数
+
+		mov eax, 0
+		mov	ax, randomTime.wMilliseconds 
+		div bl ; 取模以获取合法的下一首歌的index
+
+		mov al, ah
+		mov ah, 0
+		mov dx, 0
+		mov	indexToPlay, eax
+	.endif
+
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, indexToPlay, 0
+	invoke SelectPlaySong, hWin
+
+	invoke PlayCurrentSong, hWin ; 播放
+
+	ret
+GetPreNxtSong endp
+
+ChangeMode proc,
+	hWin : dword
+
+	.if modePlay == MODE_ONE
+		mov modePlay, MODE_RANDOM
+		; icon
+	.elseif modePlay == MODE_RANDOM
+		mov modePlay, MODE_LOOP
+		; icon
+	.elseif modePlay == MODE_LOOP
+		mov modePlay, MODE_ONE
+		; icon
+	.endif
+
+	ret
+ChangeMode endp
 END WinMain
