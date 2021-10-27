@@ -78,6 +78,8 @@ IDB_CLEAN_SONG                  equ 140
 IDB_NEW_LIST                    equ 141
 IDB_REMOVE_LIST                 equ 142
 IDB_REMOVE_SONG                 equ 143
+IDB_LOOP_BLUE                   equ 144
+IDB_LOOP_ORANGE                 equ 145
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -365,6 +367,8 @@ bmp_Clean_Song			dword	?	; 清除无效歌曲
 bmp_New_List			dword	?	; 新建歌单
 bmp_Remove_List			dword	?	; 删除歌单
 bmp_Remove_Song			dword	?	; 删除歌曲
+bmp_Loop_Blue			dword	?	; 蓝色顺序循环
+bmp_Loop_Orange			dword	?	; 橙色顺序循环
 
 curTheme	word	0	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
@@ -1183,6 +1187,10 @@ InitUI proc,
 	mov bmp_Remove_List, eax
 	invoke LoadBitmap, hInstance, IDB_REMOVE_SONG
 	mov bmp_Remove_Song, eax
+	invoke LoadBitmap, hInstance, IDB_LOOP_BLUE
+	mov bmp_Loop_Blue, eax
+	invoke LoadBitmap, hInstance, IDB_LOOP_ORANGE
+	mov bmp_Loop_Orange, eax
 
 	; 测试图片放置到测试元件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
@@ -1192,7 +1200,10 @@ InitUI proc,
 	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_New_List
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_List
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_BITMAP, bmp_Clean_Song
-;	invoke 
+	invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_BITMAP, bmp_Add_Song_Blue
+	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Remove_Song
+	invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_BITMAP, bmp_Mute_Blue
+	invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_BITMAP, bmp_Loop_Blue
 ;	mov eax, IMG_START
 ;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
 ;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax

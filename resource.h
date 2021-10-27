@@ -26,6 +26,8 @@
 #define IDB_NEW_LIST                    141
 #define IDB_REMOVE_LIST                 142
 #define IDB_REMOVE_SONG                 143
+#define IDB_LOOP_BLUE                   144
+#define IDB_LOOP_ORANGE                 145
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_FILE_SYSTEM2                1002
 #define IDC_COMBO1                      1009
@@ -63,7 +65,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        144
+#define _APS_NEXT_RESOURCE_VALUE        146
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1054
 #define _APS_NEXT_SYMED_VALUE           101
