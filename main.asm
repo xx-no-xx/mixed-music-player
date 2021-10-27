@@ -6,7 +6,7 @@ include windows.inc
 include user32.inc
 include kernel32.inc
 include masm32.inc
-; include comctl32.inc
+include comctl32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
 
@@ -227,6 +227,8 @@ cmd_setStart BYTE "seek mySong to start", 0
 cmd_setVol BYTE "setaudio mySong volume to %d",0
 ;----------------------
 
+rect RECT <0, 0, 1080, 675>
+
 mciCommand BYTE 200 DUP(0)
 playState BYTE 2
 
@@ -328,6 +330,20 @@ DialogMain proc,
 
 	.if	uMsg == WM_INITDIALOG
 		invoke InitUI, hWin, wParam, lParam
+		invoke MoveWindow, hWin, 100, 100, 1080, 675, 0
+
+		invoke GetDlgItem, hWin, IDC_BACKGROUND ; 固定背景
+		invoke MoveWindow, eax, 0, 0, 1080, 675, 0
+
+		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
+		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; 设置maingroup的左上角坐标+宽度于高度
+
+		invoke GetDlgItem, hWin, IDC_SOUND
+		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; 设置maingroup的左上角坐标+宽度于高度
+		; 根据test.rc的坐标＊2得到它再dialog里的相对坐标
+		; 添加一个偏移量以应对奇异的控件飘逸
+
+		; todo
 		push hWin
 		pop hMainDialog
 		invoke GetAllGroups, hWin
