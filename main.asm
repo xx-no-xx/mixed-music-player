@@ -240,6 +240,8 @@ PlayCurrentSong proto, ; 从头播放当前音乐
 
 ResumeCurrentSong proto ; 继续当前音乐
 
+StopCurrentSong proto ; 停止当前音乐
+
 AlterVolume proto, ; 调整音量大小
 	hWin : dword
 
@@ -339,9 +341,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1275,7 +1277,7 @@ Paint proc,
 	ret
 Paint endp
 
-PauseCurrentMusic proc
+PauseCurrentSong proc
 	.if playState == STATE_PAUSE ; 若已暂停则返回
 		ret
 	.endif 
@@ -1284,7 +1286,16 @@ PauseCurrentMusic proc
 	invoke mciExecute, ADDR cmd_pause
 	ret
 	;修改图标
-PauseCurrentMusic endp 
+PauseCurrentSong endp 
+
+StopCurrentSong proc
+	.if playState != STATE_STOP
+		invoke mciExecute, ADDR cmd_close ; 关闭设备
+	.endif
+
+	mov playState, STATE_STOP ; 变为停止态
+	ret
+StopCurrentSong endp
 
 ResumeCurrentSong proc
 	.if playState == STATE_PLAY ; 若正在播放则返回
@@ -1332,7 +1343,7 @@ PlayMusic proc,
 		invoke PlayCurrentSong, hWin
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PLAY ; 当前为播放态
-		invoke PauseCurrentMusic
+		invoke PauseCurrentSong
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_BITMAP, bmp_Play_Blue
 	.elseif playState == STATE_PAUSE ; 当前为暂停态
 		invoke ResumeCurrentSong
