@@ -10,6 +10,7 @@ include comctl32.inc
 include comdlg32.inc ; 文件操作
 include winmm.inc
 include gdi32.inc
+include shlwapi.inc
 
 ; irvine32.inc
 
@@ -19,6 +20,7 @@ includelib kernel32.lib
 includelib comdlg32.lib
 includelib Winmm.lib
 includelib gdi32.lib
+includelib Shlwapi.lib
 
 .const
 
@@ -232,7 +234,6 @@ KeyDown proto,
 	wParam : dword, 
 	lParam : dword
 
-; 界面布局
 InitUI proto, 
 	hWin : dword, 
 	wParam : dword,
@@ -248,10 +249,16 @@ PlayCurrentSong proto, ; 从头播放当前音乐
 
 ResumeCurrentSong proto ; 继续当前音乐
 
-StopCurrentSong proto ; 停止当前音乐
+StopCurrentSong proto, ; 停止当前音乐
+	hWin : dword
 
 AlterVolume proto, ; 调整音量大小
 	hWin : dword
+
+GetPlayPosition proto, ;获取播放位置
+	hWin : dword
+
+CheckPlayStatus proto ;检查播放状态：eax = 1 完成; eax = 0 未完成
 
 CheckPlayCurrentSong proto, ; 试图播放当前的歌曲currentPlaySingleSongPath
 	hWin : dword
@@ -294,12 +301,20 @@ rect RECT <0, 0, 1080, 675>
 
 randomTime SYSTEMTIME <>
 
+;--------播放状态-------
 mciCommand BYTE 200 DUP(0)
 playState BYTE 2
 volume DWORD 100
 isMuted BYTE 0
+isDragging BYTE 0
+curPos BYTE 32 DUP(0)
+curLen BYTE 32 DUP(0)
+;----------------------
 
+;------格式化输出-------
 intFormat BYTE "%d", 0
+timeFormat BYTE "%02d:%02d", 0
+;----------------------
 
 modePlay byte MODE_LOOP
 
@@ -311,6 +326,8 @@ currentSelectSingleSongPath byte MAX_FILE_LEN dup(0) ;目前选中的歌曲路径
 
 currentPlaySingleSongIndex dword DEFAULT_PLAY_SONG; 目前正在播放的歌曲信息
 currentPlaySingleSongPath byte MAX_FILE_LEN dup(0); 目前正在播放歌曲的路径
+currentPlaySingleSongLength dword 0               ; 目前正在播放歌曲的长度
+currentPlaySingleSongPos dword 0             ; 目前正在播放歌曲播放到的位置
 
 currentPlayGroup dword DEFAULT_SONG_GROUP ; 目前正在播放的歌单编号
 groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; 目前正在播放的歌单编号的str格式。 需要访问GetGroupDetailInStr以更新
@@ -459,10 +476,24 @@ DialogMain proc,
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMIN, 0, 0
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETRANGEMAX, 0, 1000
 		invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, 1, 1000
+
 		;初始化音量值
 		mov volume, 1000
 		invoke wsprintf, addr mciCommand, addr intFormat, 100
 		invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETTEXT, 0, addr mciCommand
+		
+		;初始化Timer, 200ms间隔
+		invoke SetTimer, hWin, 1, 200, NULL
+
+		;初始化歌曲进度条
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+
+		;初始化歌曲时间
+		invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+		invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 		; do something
 	.elseif uMsg == WM_KEYDOWN
 		; DEBUG: 按下空格后被按钮截获
@@ -538,9 +569,19 @@ DialogMain proc,
 
 		.if currentSlider == IDC_SOUND
 			.if loword == SB_THUMBTRACK
-				invoke AlterVolume, hWin
+				invoke AlterVolume, hWin ;调整音量
 			.endif
+		.elseif currentSlider == IDC_SONG_LOCATE
+			.if loword == SB_THUMBTRACK ;拖动中
+				mov isDragging, 1
+			.elseif loword == SB_ENDSCROLL ;结束拖动
+				mov isDragging, 0
+			.endif 
 		.endif
+	.elseif uMsg == WM_TIMER ;时钟信号
+		invoke GetPlayPosition, hWin ;获取播放位置
+	.else
+		; do sth
 	.endif
 
 	xor eax, eax ; eax = 0
@@ -978,7 +1019,7 @@ SelectPlaySong proc,; 设置当前正在播放的歌曲
 	local indexToPlay : dword ; 当前应该播放歌曲的index
 	local staticWin : dword
 
-	invoke StopCurrentSong
+	invoke StopCurrentSong, hWin
 	invoke SelectSong, hWin
 
 	push currentSelectSingleSongIndex
@@ -1390,12 +1431,23 @@ PauseCurrentSong proc
 	;修改图标
 PauseCurrentSong endp 
 
-StopCurrentSong proc
+StopCurrentSong proc,
+	hWin : dword
 	.if playState != STATE_STOP
 		invoke mciExecute, ADDR cmd_close ; 关闭设备
 	.endif
 
 	mov playState, STATE_STOP ; 变为停止态
+
+	;初始化歌曲进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+
+	;初始化歌曲时间
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 	ret
 StopCurrentSong endp
 
@@ -1428,8 +1480,33 @@ PlayCurrentSong proc,
 	invoke mciExecute, ADDR mciCommand
 	invoke mciExecute, ADDR cmd_play
 	invoke AlterVolume, hWin
-	ret
+
+	;设置进度
+
+	invoke mciSendString, ADDR cmd_getLen, ADDR curLen, 32, NULL ; 获取歌曲长度
+	invoke StrToInt, ADDR curLen
+	mov currentPlaySingleSongLength, eax
+
+	;设置进度条
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, currentPlaySingleSongLength
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
+	
+	;设置文本
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+
+	mov eax, currentPlaySingleSongLength
+	mov edx, 0
+	mov ebx, 1000 ;
+	div ebx ; eax 为秒数
+	mov edx, 0
+	mov ebx, 60 ; eax 为分钟数, edx为秒数 
+	div ebx
+	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, eax, edx
+	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 	;修改图标
+	ret
 PlayCurrentSong endp
 
 PlayMusic proc,
@@ -1475,6 +1552,38 @@ AlterVolume proc,
 	.endif
 	ret
 AlterVolume endp
+
+GetPlayPosition proc,
+	hWin : dword
+	;获取当前播放位置
+	invoke mciSendString, addr cmd_getPos, addr curPos, 32, NULL
+	invoke StrToInt, addr curPos
+	mov currentPlaySingleSongPos, eax
+
+	;设置进度条
+	.if isDragging == 0 ; 未拖动
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, eax
+	.else ; 拖动
+		invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_GETPOS, 0, 0
+		mov currentPlaySingleSongPos, eax
+		invoke wsprintf, addr mciCommand, addr cmd_setPos, eax
+		invoke mciExecute, addr mciCommand
+		invoke mciExecute, addr cmd_play
+	.endif
+
+	;设置PLAY_TIME_TEXT
+	mov eax, currentPlaySingleSongPos
+	mov edx, 0
+	mov ebx, 1000 ;
+	div ebx ; eax 为秒数
+	mov edx, 0
+	mov ebx, 60 ; eax 为分钟数, edx为秒数 
+	div ebx
+	invoke wsprintf, addr mciCommand, addr timeFormat, eax, edx
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, addr mciCommand
+
+	ret
+GetPlayPosition endp
 
 CollectSongName proc,
 	songPath : dword,
