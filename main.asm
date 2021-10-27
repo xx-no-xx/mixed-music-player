@@ -101,6 +101,9 @@ STATE_STOP equ 2 ; Í£Ö¹²¥·Å
 PLAY_PREVIOUS equ 0 ; ²¥·ÅÇ°Ò»Ê×
 PLAY_NEXT equ 1 ; ²¥·ÅºóÒ»Ê×
 
+MODE_LOOP equ 0 ; ¸èµ¥Ñ­»·²¥·Å
+MODE_ONE equ 1 ; µ¥ÇúÑ­»·²¥·Å
+MODE_RANDOM equ 2 ; Ëæ»ú²¥·Å
 
 DELETE_ALL_SONGS_IN_GROUP	equ 0 ;É¾³ısongGroup(dword)ÀïµÄËùÓĞ¸è
 DELETE_CURRENT_SELECT_SONG	equ 1 ;É¾³ıÑ¡ÖĞµÄÄÇÊ×¸è£¨current play song£©
@@ -268,6 +271,9 @@ GetPreNxtSong proto, ; ¸üĞÂÑ¡ÔñÉÏÒ»Ê×»òÕßÏÂÒ»Ê×¡£Èç¹ûÑ¡ÖĞµÄÕâÊ×¸è²»´æÔÚ£¬ÄÇÃ´ÌáÊ
 	hWin : dword,
 	method : dword
 
+ChangeMode proto, ; ÇĞ»»Ä£Ê½
+	hWin : dword
+
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -286,12 +292,16 @@ cmd_setVol BYTE "setaudio mySong volume to %d",0
 
 rect RECT <0, 0, 1080, 675>
 
+randomTime SYSTEMTIME <>
+
 mciCommand BYTE 200 DUP(0)
 playState BYTE 2
 volume DWORD 100
 isMuted BYTE 0
 
 intFormat BYTE "%d", 0
+
+modePlay byte MODE_LOOP
 
 handler HANDLE ? ; ÎÄ¼ş¾ä±ú
 divideLine byte 0ah ; »»ĞĞdivideLine
@@ -312,6 +322,8 @@ currentGroupSongs song MAX_GROUP_SONG dup(<,>) ; µ±Ç°²¥·Å¸èµ¥µÄËùÓĞ¸èÇúĞÅÏ¢
 
 maxGroupId dword 0
 
+color_const COLORREF 778234
+
 ; ++++++++++++++É¾³ı¹¦ÄÜÒıÈëµÄÁÙÊ±´æ´¢±äÁ¿++++++++++++++
 ; ++++ Äã²»Ó¦ÔÚ³ıÁËÉ¾³ı¹¦ÄÜÖ®ÍâµÄº¯Êı·ÃÎÊÕâĞ©±äÁ¿ +++++++
 delAllGroups songgroup MAX_GROUP_NUM dup(<,>)
@@ -320,7 +332,7 @@ delAllSongs song MAX_ALL_SONG_NUM dup(<,>)
 ; ++++++++++++++µ¼ÈëÎÄ¼şOPpenFileName½á¹¹++++++++++++++
 ofn OPENFILENAME <>
 ofnTitle BYTE 'µ¼ÈëÒôÀÖ', 0	
-ofnFilter byte "Media Files(*mp3, *wav)", 0, "*.mp3;*.wav", 0, 0
+ofnFilter byte "Media Files(*.mp3, *.wav, *.mid, *.wmv)", 0, "*.mp3;*.wav;*.wma;*.mid", 0, 0
 
 ; ++++++++++++++Message Box ÌáÊ¾ĞÅÏ¢++++++++++++++++++
 deleteNone byte "ÄúÃ»ÓĞÑ¡ÖĞ¸èµ¥£¬²»ÄÜÉ¾³ı¡£",0
@@ -329,6 +341,7 @@ deleteSongNone byte "ÄúÃ»ÓĞÑ¡ÖĞ¸èÇú£¬²»ÄÜÉ¾³ı¡£", 0
 playSongNone byte "ÄúÃ»ÓĞÑ¡ÖĞ¸èÇú£¬²»ÄÜ²¥·Å¡£", 0
 playSongInvalid byte "ÄúÔ¤¼Æ²¥·ÅµÄ¸èÇú²»´æÔÚ£¬ÒÑ×Ô¶¯ÎªÄúÉ¾³ı²»´æÔÚµÄ¸èÇú¡£", 0
 playPreNxtNone byte "ÄúÃ»ÓĞÑ¡ÖĞ¸èÇú£¬²»ÄÜ²¥·ÅÉÏÒ»Ê×/ÏÂÒ»Ê×", 0
+nameNone byte "ÔİÎŞ¸èÇú", 0
 
 ; +++++++++++++++³ÌĞòËùĞè²¿·Ö´°¿Ú±äÁ¿+++++++++++++++
 hInstance dword ?
@@ -347,9 +360,7 @@ currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0
-
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
-
 inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; to change "1" -> 0
 
@@ -419,14 +430,11 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
-		; invoke SetWindowPos, hWin, HWND_TOPMOST, 200, 100, 1080, 675, 0
 		invoke InitUI, hWin, wParam, lParam
-;		invoke MoveWindow, hWin, 100, 100, 1080, 600, 0
 
+		; ¹Ì¶¨±³¾°bitmap
 		invoke GetWindowRect, hWin, addr rect
-		;invoke 
-		invoke GetDlgItem, hWin, IDC_BACKGROUND ; ¹Ì¶¨±³¾°
-;		invoke GetWindowRect, eax, addr rect
+		invoke GetDlgItem, hWin, IDC_BACKGROUND 
 
 		mov	ecx, rect.right
 		sub ecx, rect.left
@@ -435,17 +443,15 @@ DialogMain proc,
 
 		invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
 
-;		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
-;		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; ÉèÖÃmaingroupµÄ×óÉÏ½Ç×ø±ê+¿í¶ÈÓÚ¸ß¶È
+		; ÉèÖÃ³õÊ¼²¥·Å¸èÇúµÄÃû³Æ
+		invoke GetDlgItem, hWin, IDC_CURRENT_PLAY_SONG_TEXT 
+		invoke SetWindowText, eax, addr nameNone
 
-;		invoke GetDlgItem, hWin, IDC_SOUND
-;		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; ÉèÖÃmaingroupµÄ×óÉÏ½Ç×ø±ê+¿í¶ÈÓÚ¸ß¶È
-		; ¸ù¾İtest.rcµÄ×ø±ê£ª2µÃµ½ËüÔÙdialogÀïµÄÏà¶Ô×ø±ê
-		; Ìí¼ÓÒ»¸öÆ«ÒÆÁ¿ÒÔÓ¦¶ÔÆæÒìµÄ¿Ø¼şÆ®Òİ
-
-		; todo
+		; »ñÈ¡´°¿Ú
 		push hWin
 		pop hMainDialog
+
+		; »ñÈ¡ËùÓĞµÄ×é±ğºÍ¸èÇú
 		invoke GetAllGroups, hWin
 		invoke ShowMainDialogView, hWin
 
@@ -511,6 +517,10 @@ DialogMain proc,
 		.elseif loword == IDC_NEXT_BUTTON
 			.if hiword == BN_CLICKED
 				invoke PlayNextSong, hWin
+			.endif
+		.elseif loword == IDC_CHANGE_MODE
+			.if hiword == BN_CLICKED
+				invoke ChangeMode, hWin
 			.endif
 		.else
 			; do something
@@ -755,9 +765,9 @@ REPEAT_READ:
 	jmp REPEAT_READ
 END_READ:
 	invoke CloseHandle, handler ; ¹Ø±Õhandler
-
+	
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0 ;Ä¬ÈÏÑ¡Ôñsong0
-	invoke SelectSong, hWin ; Ñ¡Ôñ¶ÔÓ¦µÄsong
+	invoke SelectPlaySong, hWin ; Ñ¡Ôñ£¨Çå¿Õ²¥·Å¸èÇú£©
 	xor eax, eax ; eax = 0
 	ret
 SelectGroup endp
@@ -966,13 +976,25 @@ SelectPlaySong proc,; ÉèÖÃµ±Ç°ÕıÔÚ²¥·ÅµÄ¸èÇú
 	hWin : dword
 
 	local indexToPlay : dword ; µ±Ç°Ó¦¸Ã²¥·Å¸èÇúµÄindex
+	local staticWin : dword
 
+	invoke StopCurrentSong
 	invoke SelectSong, hWin
 
 	push currentSelectSingleSongIndex
 	pop currentPlaySingleSongIndex
 
 	invoke CollectSongPath, addr currentSelectSingleSongPath, addr currentPlaySingleSongPath ;¸´ÖÆµ±Ç°¸èÇúµÄÂ·¾¶µ½currentPlaySingleSongPath
+
+	invoke GetDlgItem, hWin, IDC_CURRENT_PLAY_SONG_TEXT 
+	mov	staticWin, eax
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+		invoke SetWindowText, staticWin, addr nameNone
+	.else
+		invoke GetFileTitle, addr currentPlaySingleSongPath, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
+		invoke SetWindowText, staticWin, addr readSongNameStr
+	; readSongNameStr
+	.endif
 	ret
 SelectPlaySong endp
 
@@ -983,6 +1005,9 @@ DeleteTargetSong proc,
 
 	local counter : dword
 	local BytesWrite : dword
+	local selectIndex : dword
+	local playIndex : dword
+	local playIndexadd1 : dword
 ;	index : dword
 
 ; ·ÖÎªÈıÖÖÉ¾³ıµÄmethod: 
@@ -990,10 +1015,24 @@ DeleteTargetSong proc,
 ; DELETE_CURRENT_SELECT_SONG	:É¾³ıÑ¡ÖĞµÄÄÇÊ×¸è£¨current play song£©
 ; DELETE_INVALID			:É¾³ıËùÓĞ²»´æÔÚµÄÂ·¾¶¶ÔÓ¦µÄ¸è
 
+	invoke SelectSong, hWin ; ÏÈ¸üĞÂµ±Ç°Ñ¡ÖĞµÄ¸èÇú
+	push currentSelectSingleSongIndex
+	pop selectIndex
+
 	.if method == DELETE_CURRENT_SELECT_SONG ; 
+		invoke SelectSong, hWin ; ÏÈ¸üĞÂµ±Ç°Ñ¡ÖĞµÄ¸èÇú
+		push currentSelectSingleSongIndex
+		pop selectIndex ; ½«Õâ¸öÖ¸´æ´¢¸øselectIndex£¬ÒÔ±ãºóĞøÊ¹ÓÃ
 		.if currentSelectSingleSongIndex == DEFAULT_PLAY_SONG
 			invoke MessageBox, hWin, addr deleteSongNone, 0, MB_OK ;Èç¹ûÉ¾³ıµ±Ç°²¥·ÅµÄ¸èÇú£¬ÇÒµ±Ç°Ã»ÓĞ²¥·ÅµÄ¸èÇú£¬±¨´í
 			ret
+		.endif
+		mov	eax, currentPlaySingleSongIndex
+		.if eax == currentSelectSingleSongIndex ; Èç¹ûÉ¾³ı¸èÇúÊÇ²¥·Å¸èÇú£¬ÄÇÃ´Í£Ö¹Ëü£¬È»ºóÇå¿Õ½¹µãºÍ²¥·Å
+			invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0
+			invoke SelectPlaySong, hWin
+		.elseif eax > currentSelectSingleSongIndex ; Èç¹ûÉ¾³ı¸èÇú£¬ÔÚ²¥·Å¸èÇúÖ®Ç°£¬ĞŞ¸Ä²¥·Å¸èÇúµÄindex
+			sub currentPlaySingleSongIndex, 1 
 		.endif
 	.endif
 
@@ -1001,6 +1040,14 @@ DeleteTargetSong proc,
 		.if songGroup == DEFAULT_SONG_GROUP
 			ret ; Èç¹ûÉ¾³ıÒ»¸ö×é£¬ÇÒÕâ¸ö×é²»´æÔÚ£¬·µ»Ø
 		.endif
+	.endif
+
+	.if method == DELETE_INVALID
+		push currentPlaySingleSongIndex ; Èç¹ûÊÇÉ¾³ıÎŞĞ§µÄ·½·¨£¬ĞèÒª±£ÁôplayIndex
+		pop playIndex
+		push playIndex
+		pop playIndexadd1
+		add playIndexadd1,  1 ; playIndexadd1 = playIndex + 1
 	.endif
 
 	invoke GetAllSongInData ; »ñÈ¡ËùÓĞdata.txtÖĞµÄ¸èÇúĞÅÏ¢£¬´æ´¢ÔÚdelAllSongsÖ®ÖĞ
@@ -1011,7 +1058,7 @@ DeleteTargetSong proc,
 	mov		esi, offset delAllSongs
 
 	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN ; ½«ÎÄ¼şÖ¸ÕëÒÆ¶¯µ½¿ªÍ·
-	mov		ecx, 0 ; ecx¼ÇÂ¼Ä¿Ç°ÊÇsongGroupµÄµÚecxÊ×¸è
+	mov		ecx, 0 ; ecx¼ÇÂ¼Ä¿Ç°ÊÇcurrentPlayGroupµÄµÚecxÊ×¸è ; 
 
 REPEAT_WRITE:
 	.if counter == 0
@@ -1020,16 +1067,16 @@ REPEAT_WRITE:
 	dec counter
 
 	mov edx, (song ptr [esi]).groupid ; »ñÈ¡µ±Ç°¸èÇúµÄgroup
-	
+
 	.if edx == currentPlayGroup 
 		.if method == DELETE_CURRENT_SELECT_SONG  ; Èç¹ûµ±Ç°¸èÇúÊôÓÚcurrentPlayGroup, ÇÒmethodÊ±DELETE_CURRENT_SELECT_SONG
-			.if ecx == currentSelectSingleSongIndex ; Èç¹ûÊÇµ±Ç°²¥·ÅµÄ¸èÇú
-				add	esi, size song 
+			.if ecx == selectIndex ; Èç¹ûÊÇµ±Ç°selectµÄ¸èÇú
+				add	esi, size song  ; É¾³ıËü
 				inc ecx ; ¼ÆÊıÆ÷+1
 				jmp REPEAT_WRITE
 			.endif
-			inc ecx ; ¼ÆÊıÆ÷+1
 		.endif
+		inc ecx ; ¼ÆÊıÆ÷+1
 	.endif
 
 	.if edx == songGroup  
@@ -1039,18 +1086,30 @@ REPEAT_WRITE:
 		.endif
 	.endif
 
-	push ecx ; ±£´æecx
+	push eax; ±£´æeax
 	.if method == DELETE_INVALID
-		push eax
+		push ecx ; ±£´æecx
 		invoke CheckFileExist, addr (song ptr [esi]).path
+		pop ecx ; »Ö¸´ecx
 		.if eax == FILE_NOT_EXIST ; Èç¹ûmethodÊÇDELETE_INVALIDÇÒµ±Ç°ÎÄ¼ş²»´æÔÚ
-			pop eax
+			.if ecx <= playIndex
+				sub currentPlaySingleSongIndex, 1 ; Èç¹ûÉ¾³ıµÄÎŞĞ§¸èÇúÔÚplaysongÖ®Ç°£¬¸øplaysongµÄindex - 1
+			.elseif ecx == playIndexadd1
+				push esi
+				push ecx
+				invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, -1, 0
+				invoke SelectPlaySong, hWin ; Èç¹ûÉ¾³ıµ±Ç°ÕıÔÚ²¥·ÅµÄÎŞĞ§¸èÇú£¬ÄÇÃ´ÒªÇåÀí²¥·ÅÏà¹ØµÄ²ÎÊı
+				pop ecx
+				pop esi
+			.endif
 			add esi, size song
+			pop eax ; »Ö¸´eax
 			jmp REPEAT_WRITE
 		.endif
-		pop eax
 	.endif
+	pop eax ; »Ö¸´eax
 
+	push ecx
 	;Èç¹û¸èÇú²»·ûºÏÉÏÊö¼¸ÖÖÇé¿ö£¬ÄÇÃ´±£´æËüµ½data.txt£¬Ò²¾ÍÊÇ²»É¾³ıËü
 	invoke WriteFile, handler, addr buffer, length divideLine,  addr BytesWrite, NULL
 	invoke GetGroupDetailInStr, (song ptr [esi]).groupid
@@ -1474,28 +1533,66 @@ GetPreNxtSong proc,
 		ret
 	.endif
 
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 
-	mov	indexToPlay, eax ; indexToPlay = i 
+;	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 
+;	mov	indexToPlay, eax ; indexToPlay = i 
+	push currentPlaySingleSongIndex
+	pop indexToPlay
+;	mov	currentPlaySingleIndex, indexToPlay
 
-	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
-	add indexToPlay, eax; indexToPlay = i + n
+	.if modePlay == MODE_LOOP
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
+		add indexToPlay, eax; indexToPlay = i + n
+		.if method == PLAY_NEXT 
+			add	indexToPlay, 1; indexToPlay = i + n + 1
+		.elseif method == PLAY_PREVIOUS
+			sub indexToPlay, 1; indexToPlay = i + n - 1
+		.endif
+	
+		.if indexToPlay >= eax  
+			sub indexToPlay, eax ; indexToPlay %= n
+			.if indexToPlay >= eax ; indexToPlay %= n
+				sub indexToPlay, eax
+			.endif
+		.endif
+	.elseif modePlay == MODE_ONE
+		; do nothing
+	.elseif modePlay == MODE_RANDOM
+		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
+		mov ebx, eax
+		invoke GetSystemTime, addr randomTime ; Ê¹ÓÃÏµÍ³Ê±¼äÉú³ÉÎ±Ëæ»úÊı
 
-	.if method == PLAY_NEXT 
-		add	indexToPlay, 1; indexToPlay = i + n + 1
-	.elseif method == PLAY_PREVIOUS
-		sub indexToPlay, 1; indexToPlay = i + n - 1
-	.endif
+		mov eax, 0
+		mov	ax, randomTime.wMilliseconds 
+		div bl ; È¡Ä£ÒÔ»ñÈ¡ºÏ·¨µÄÏÂÒ»Ê×¸èµÄindex
 
-	.if indexToPlay >= eax  
-		sub indexToPlay, eax ; indexToPlay %= n
+		mov al, ah
+		mov ah, 0
+		mov dx, 0
+		mov	indexToPlay, eax
 	.endif
 
 	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, indexToPlay, 0
-	invoke SelectSong, hWin ; Ñ¡ÔñĞÂµÄÒ»Ê×¸è
+	invoke SelectPlaySong, hWin
 
 	invoke PlayCurrentSong, hWin ; ²¥·Å
 
 	ret
 GetPreNxtSong endp
 
+ChangeMode proc,
+	hWin : dword
+
+	.if modePlay == MODE_ONE
+		mov modePlay, MODE_RANDOM
+		; icon
+	.elseif modePlay == MODE_RANDOM
+		mov modePlay, MODE_LOOP
+		; icon
+	.elseif modePlay == MODE_LOOP
+		mov modePlay, MODE_ONE
+		; icon
+	.endif
+
+	ret
+ChangeMode endp
 END WinMain
