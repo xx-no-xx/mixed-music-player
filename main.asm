@@ -301,9 +301,9 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -338,16 +338,25 @@ DialogMain proc,
 
 	.if	uMsg == WM_INITDIALOG
 		invoke InitUI, hWin, wParam, lParam
-		invoke MoveWindow, hWin, 100, 100, 1080, 675, 0
+;		invoke MoveWindow, hWin, 100, 100, 1080, 600, 0
 
+		invoke GetWindowRect, hWin, addr rect
+		;invoke 
 		invoke GetDlgItem, hWin, IDC_BACKGROUND ; 固定背景
-		invoke MoveWindow, eax, 0, 0, 1080, 675, 0
+;		invoke GetWindowRect, eax, addr rect
 
-		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
-		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; 设置maingroup的左上角坐标+宽度于高度
+		mov	ecx, rect.right
+		sub ecx, rect.left
+		mov ebx, rect.bottom
+		sub ebx, rect.top
 
-		invoke GetDlgItem, hWin, IDC_SOUND
-		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; 设置maingroup的左上角坐标+宽度于高度
+		invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
+
+;		invoke GetDlgItem, hWin, IDC_MAIN_GROUP 
+;		invoke MoveWindow, eax, 260, 236 + 20, 662, 296, 0 ; 设置maingroup的左上角坐标+宽度于高度
+
+;		invoke GetDlgItem, hWin, IDC_SOUND
+;		invoke MoveWindow, eax, 850, 560 + 40, 200, 22, 0 ; 设置maingroup的左上角坐标+宽度于高度
 		; 根据test.rc的坐标＊2得到它再dialog里的相对坐标
 		; 添加一个偏移量以应对奇异的控件飘逸
 

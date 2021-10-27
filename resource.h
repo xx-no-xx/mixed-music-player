@@ -31,6 +31,7 @@
 #define IDC_SOUND_TEXT                  1049
 #define IDC_CURRENT_STATIC              1050
 #define IDC_CURRENT_PLAY_SONG_TEXT      1051
+#define IDC_SCROLLBAR2                  1053
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
@@ -42,7 +43,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        121
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1052
+#define _APS_NEXT_CONTROL_VALUE         1054
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
