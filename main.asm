@@ -103,6 +103,7 @@ NEXT_WIDTH						equ 30	 ; ÏÂÒ»Ê×¼ü¿í¶È
 DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
 DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ğ±»·ÖÅäµ½µÄ±àºÅ ; todo : change 99824 to 0
 DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a larger num
+DEFAULT_PLAY_LYRIC  equ 0 ; Ä¬ÈÏµÄµÚindex¾ä¸è´Ê
 
 FILE_DO_EXIST		equ 0 ; ÎÄ¼ş´æÔÚ
 FILE_NOT_EXIST		equ 1 ; ÎÄ¼ş²»´æÔÚ
@@ -139,6 +140,11 @@ MAX_ALL_SONG_NUM equ 300 ; È«Ìå¸èÇúµÄ×î´óÊıÄ¿£¨=MAX_GROUP_SONG * MAX_GROUP_NUM£©
 SAVE_TO_MAIN_DIALOG_GROUP		equ 1 ; Ö÷½çÃæÕ¹Ê¾ÓÃ£º±£´æÖÁµ±Ç°¸èµ¥
 SAVE_TO_TARGET_GROUP		equ 2 ; ¸èÇú¹ÜÀíÓÃ£º±£´æÖÁ¹ÜÀíÒ³µÄµ±Ç°¸èµ¥
 SAVE_TO_DEFAULT_GROUP		equ 3 ; ¸èµ¥¹ÜÀíÓÃ£º±£´æÖÁ¹ÜÀíÒ³µÄÄ¬ÈÏ¸èµ¥
+
+INF							equ 4294967295 ;
+
+LYRIC_DO_EXIST				equ 0 ; ¸è´Ê´æÔÚ
+LYRIC_NOT_EXIST				equ 1 ; ¸è´Ê²»´æÔÚ
 
 
 ; +++++++++++++++++ function ++++++++++++++++
@@ -304,6 +310,16 @@ lyric struct
 	lyricStr byte MAX_SINGLE_LYRIC_LEN dup(0)
 lyric ends
 
+GetLyricPath proto ; ÕÒµ½lyric¶ÔÓ¦µÄÂ·¾¶
+
+ReadLyric proto ; ¶ÁÈ¡currentPlaySingleSong¶ÔÓ¦µÄlyricÎÄ¼ş
+
+UpdateNextLyric proto ; ¸üĞÂÏÂÒ»¾ä¸è´Êµ½currentPlayLyricStr
+
+FindLyricAtTime proto, ; ÕÒµ½timestampÊ±Ó¦¸Ã²¥·ÅµÄ¸è´Ê
+	timeStamp : dword
+	
+
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -321,7 +337,6 @@ cmd_setVol BYTE "setaudio mySong volume to %d",0
 ;----------------------
 
 rect RECT <0, 0, 1080, 675>
-
 randomTime SYSTEMTIME <>
 
 ;--------²¥·Å×´Ì¬-------
@@ -360,9 +375,16 @@ groupDetailStr byte MAX_GROUP_DETAIL_LEN dup("a") ; Ä¿Ç°ÕıÔÚ²¥·ÅµÄ¸èµ¥±àºÅµÄstr¸
 numCurrentGroupSongs dword 0 ; µ±Ç°²¥·Å¸èµ¥µÄ¸èÇúÊıÁ¿
 currentGroupSongs song MAX_GROUP_SONG dup(<,>) ; µ±Ç°²¥·Å¸èµ¥µÄËùÓĞ¸èÇúĞÅÏ¢
 
-maxGroupId dword 0
+maxGroupId dword 0 ; ÓÃÓÚ·ÖÅäĞÂµÄ×é±ğid
 
-color_const COLORREF 778234
+hasLyric dword LYRIC_NOT_EXIST ; ¸è´ÊÊÇ·ñ´æÔÚ
+currentPlayLyricIndex dword DEFAULT_PLAY_LYRIC; Ä¿Ç°ÕıÔÚ²¥·ÅµÄ¸è´ÊÊÇµÚ¼¸¾ä
+currentPlayLyricPath dword MAX_FILE_LEN dup(0) ; ¸è´ÊËù´¦µÄÂ·¾¶
+currentPlayLyricStr byte MAX_SINGLE_LYRIC_LEN dup(0); Ä¿Ç°ÕıÔÚ²¥·ÅµÄ¸è´ÊµÄstrĞÎÊ½
+nextLyricTime dword INF; ÏÂÒ»¾äÒª²¥·ÅµÄ¸èÇúµÄÊ±¼ä´Á
+lyricSuffix dword "lrc", 0
+
+currentLyrics lyric MAX_LYRIC_NUM dup(<,>)
 
 ; ++++++++++++++É¾³ı¹¦ÄÜÒıÈëµÄÁÙÊ±´æ´¢±äÁ¿++++++++++++++
 ; ++++ Äã²»Ó¦ÔÚ³ıÁËÉ¾³ı¹¦ÄÜÖ®ÍâµÄº¯Êı·ÃÎÊÕâĞ©±äÁ¿ +++++++
@@ -1851,4 +1873,43 @@ ChangeMode proc,
 
 	ret
 ChangeMode endp
+
+GetLyricPath proc
+
+	local pointPos : dword
+
+	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
+		mov	hasLyric, LYRIC_NOT_EXIST
+		ret
+	.endif
+
+	invoke CollectSongPath, addr currentPlaySingleSongPath, addr currentPlayLyricStr
+	mov	ecx, offset currentPlayLyricStr
+
+
+REPEAT_READ:
+	mov eax, [ecx]
+	.if eax == '.'
+		mov pointPos, ecx
+	.endif
+	.if eax != 0
+		add ecx, size byte
+		jmp REPEAT_READ
+	.endif
+
+	mov	esi, pointPos
+	add esi, size byte
+	mov	edi, offset lyricSuffix
+	mov ecx, 4
+	cld
+	rep movsb
+
+	invoke CheckFileExist, addr currentPlayLyricStr
+	.if eax == FILE_NOT_EXIST
+		mov hasLyric, LYRIC_NOT_EXIST
+	.endif
+
+GetLyricPath endp
+
+
 END WinMain
