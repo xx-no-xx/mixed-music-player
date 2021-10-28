@@ -1489,7 +1489,7 @@ StopCurrentSong proc,
 
 	;初始化歌曲进度条
 	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMIN, 0, 0
-	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 0
+	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETRANGEMAX, 0, 1
 	invoke SendDlgItemMessage, hWin, IDC_SONG_LOCATE, TBM_SETPOS, 1, 0
 
 	;初始化歌曲时间
@@ -1618,6 +1618,8 @@ SetTimeText endp
 
 GetPlayPosition proc,
 	hWin : dword
+	
+	invoke AlterVolume, hWin
 
 	.if playState == STATE_STOP
 		ret
@@ -1650,7 +1652,6 @@ GetPlayPosition proc,
 		.endif
 	.endif 
 
-	invoke AlterVolume, hWin
 	ret
 GetPlayPosition endp
 
