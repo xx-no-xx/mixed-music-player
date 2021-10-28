@@ -91,7 +91,7 @@
 #define IDC_THEME                       1054
 #define IDC_CLOSE                       1055
 #define IDC_LIST_NAME                   1056
-#define IDC_LYRIC                       1057
+#define IDC_LYRICS                      1057
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
