@@ -564,7 +564,14 @@ DialogMain proc,
 		invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
 		invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+		
+		;注册热键
+		invoke RegisterHotKey, hWin, 1, MOD_SHIFT, VK_F8
 		; do something
+	.elseif uMsg == WM_HOTKEY
+		; do something
+		; mov eax, eax
+		invoke EndDialog, hWin, 0
 	.elseif uMsg == WM_KEYDOWN
 		; DEBUG: 按下空格后被按钮截获
 		invoke KeyDown, hWin, wParam, lParam
