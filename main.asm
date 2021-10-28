@@ -1649,6 +1649,8 @@ GetPlayPosition proc,
 			invoke PlayNextSong, hWin
 		.endif
 	.endif 
+
+	invoke AlterVolume, hWin
 	ret
 GetPlayPosition endp
 
