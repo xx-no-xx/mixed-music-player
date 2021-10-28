@@ -135,7 +135,7 @@ MAX_GROUP_DETAIL_LEN equ 32 ; 组别编号的最长长度
 MAX_GROUP_NAME_LEN equ 20 ; 歌单名称的最长长度
 MAX_GROUP_SONG equ 30 ; 歌单内歌曲的最大数
 MAX_GROUP_NUM equ 10 ; 最大的歌单数量
-MAX_SONG_NAME_LEN equ 100; 最大歌曲的名字的长度 ;todotodotodo
+MAX_SONG_NAME_LEN equ 150; 最大歌曲的名字的长度 ;todotodotodo
 
 MAX_SINGLE_LYRIC_LEN equ 100; 每句歌词的字符串的最大长度
 MAX_LYRIC_NUM equ 300; 歌词的数量
@@ -424,6 +424,7 @@ playSongNone byte "您没有选中歌曲，不能播放。", 0
 playSongInvalid byte "您预计播放的歌曲不存在，已自动为您删除不存在的歌曲。", 0
 playPreNxtNone byte "您没有选中歌曲，不能播放上一首/下一首", 0
 nameNone byte "暂无歌曲", 0
+lyricNone byte "当前歌曲没有歌词文件", 0
 
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
 hInstance dword ?
@@ -451,10 +452,10 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "C:\Users\43722\Desktop", 0 ; default open C only for test
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1972,7 +1973,7 @@ ChangeMode endp
 FindLyricAtTime proc,
 	timeStamp : dword
 	.if hasLyric == LYRIC_NOT_EXIST
-		invoke RtlZeroMemory, addr currentPlayLyricStr, sizeof currentPlayLyricStr
+;		invoke RtlZeroMemory, addr currentPlayLyricStr, sizeof currentPlayLyricStr
 		ret
 	.endif
 	mov eax, currentLyricTime
@@ -1983,6 +1984,10 @@ FindLyricAtTime proc,
 REPEAT_PRE_FIND:
 		.if timeStamp >= eax 
 			mov currentLyricTime, eax
+			mov currentPlayLyricIndex, ebx
+			mov currentPlayLyricPos, esi
+			add esi, size dword
+			invoke CollectLyricStr, esi, addr currentPlayLyricStr
 			jmp END_PRE_FIND
 		.endif
 		sub ebx, 1
@@ -2000,6 +2005,10 @@ END_PRE_FIND:
 REPEAT_NEXT_FIND:
 		.if timeStamp < eax 
 			mov nextLyricTime, eax
+			mov currentPlayLyricIndex, ebx
+			mov currentPlayLyricPos, esi
+			add esi, size dword
+			invoke CollectLyricStr, esi, addr currentPlayLyricStr
 			jmp END_NEXT_FIND
 		.endif
 		add ebx, 1
@@ -2018,17 +2027,23 @@ FindLyricAtTime endp
 SetInitLyric proc
 	invoke ReadLyric
 	.if hasLyric ==  LYRIC_NOT_EXIST
+		mov esi, offset lyricNone
+		mov edi, offset currentPlayLyricStr
+		mov ecx, lengthof lyricNone
+		cld
+		rep movsb
 		ret
 	.endif
 	mov currentPlayLyricIndex, 0
 	mov esi, offset currentLyrics
 	add esi, size dword
-	invoke CollectLyricStr, esi, addr currentPlayLyricStr
-	mov currentPlayLyricPos, esi
+	invoke CollectLyricStr, esi, addr currentPlayLyricStr ; 将第0个lyric交给currentPlayLyricStr
+
+	mov esi, offset currentLyrics
+	mov currentPlayLyricPos, esi ; 记录当前播放的lyric的位置
 	add esi, size lyric
-	push (lyric ptr [esi]).timeStamp
+	push (lyric ptr [esi]).timeStamp ; 记录下一个lyric的时间
 	pop nextLyricTime
-	mov currentPlayLyricPos, esi
 	ret
 SetInitLyric endp
 
@@ -2056,6 +2071,11 @@ ReadLyric proc
 	local const10 : dword
 	local const60 : dword
 	local const1000 : dword
+	local counter : dword
+	local scounter : sdword
+
+	mov counter, 0
+	mov scounter, 0
 
 	mov const10, 10
 	mov const60, 60
@@ -2084,6 +2104,7 @@ ReadLyric proc
 	add lyricCounter, 1
 ;	invoke CollectLyricStr, 
 
+	invoke SetFileApisToANSI
 	invoke CreateFile, offset currentPlayLyricPath, GENERIC_READ,0 ,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0
 	mov handler, eax
 
@@ -2091,6 +2112,9 @@ ReadLyric proc
 REPEAT_READ:
 	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 ; 读[
 	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	.if buffer != '['
 		jmp END_READ
 	.endif
 	add lyricCounter, 1
@@ -2156,22 +2180,25 @@ FIND_MILLISECOND:
 	mov strPos, esi
 	pop esi
 
-	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0  ; 读空格
+	mov scounter, 0
+	mov counter, 0
 READ_STR:
 	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
+	sub scounter, 1
+	add counter, 1
 	.if BytesRead == 0
+		invoke SetFilePointer, handler, scounter, 0, FILE_CURRENT
+		invoke ReadFile, handler, strPos, counter, addr BytesRead, 0
 		jmp END_READ
 	.endif
 	mov dl, [buffer]
 	.if dl != 0ah
-		mov esi, offset buffer
-		mov edi, strPos
-		mov ecx, 1
-		cld
-		rep movsb
-		add strPos, size byte
 		jmp READ_STR
 	.endif
+
+	invoke RtlZeroMemory, strPos, MAX_SINGLE_LYRIC_LEN
+	invoke SetFilePointer, handler, scounter, 0, FILE_CURRENT
+	invoke ReadFile, handler, strPos, counter, addr BytesRead, 0
 
 	mov esi, lyricSavePos
 	add esi, size lyric
@@ -2231,11 +2258,5 @@ REPEAT_READ:
 	mov hasLyric, LYRIC_DO_EXIST
 	ret
 GetLyricPath endp
-
-FindLyricAtTime proc,
-	timeStamp : dword
-
-	ret
-FindLyricAtTime endp
 
 END WinMain
