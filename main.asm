@@ -54,7 +54,8 @@ IDC_CURRENT_STATIC              equ 1050 ; "当前播放的歌曲是"title
 IDC_CURRENT_PLAY_SONG_TEXT      equ 1051 ; 当前播放的歌曲的展示
 IDC_THEME                       equ 1054 ; 更换主题
 IDC_CLOSE                       equ 1055 ; 关闭窗口
-IDC_LYRICS                      equ 1056 ; 歌词文本
+IDC_LIST_NAME                   equ 1056 ; 歌单名称
+IDC_LYRICS                      equ 1057 ; 歌词窗口
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
@@ -445,6 +446,7 @@ readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0,0
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
 inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
+currentGroupName byte MAX_GROUP_NAME_LEN dup(0)
 readTime byte 10 dup(0)
 ; to change "1" -> 0
 
@@ -452,10 +454,13 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+;ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
+;songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
+songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+;groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -499,13 +504,25 @@ ico_Change_Orange		dword	?	; 橙色更换主题
 ico_Cross_Blue			dword	?	; 蓝色关闭
 ico_Cross_Orange		dword	?	; 橙色关闭
 curTheme	word	1	; 当前主题编号
+; 字体
+fontName			byte	"微软雅黑"
+; font				HFONT	?
+; 快捷键相关
+keyLessDown		dword	0	; <键是否被按下
+keyGreatDown	dword	0	; >键是否被按下
+keyUpDown		dword	0	; 上键是否被按下
+keyDownDown		dword	0	; 下键是否被按下
+keyLeftDown		dword	0	; 左键是否被按下
+keyRightDown	dword	0	; 右键是否被按下
 ; +++++++++++++++code++++++++++++++++++
 .code
 
 WinMain PROC
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
+	;invoke PreTranslateMessage, hInstance
 	invoke DialogBoxParam, hInstance, IDD_DIALOG, 0, addr DialogMain, 0
+	;invoke SendMessage, hInstance, WM_SETFOCUS, hInstance, NULL
 	invoke ExitProcess, 0
 WinMain ENDP
 
@@ -524,7 +541,7 @@ DialogMain proc,
 ;	mov	hiword, 
 	shrd eax, ebx, 16
 	mov	hiword, ax
-
+	; invoke SetFocus, hWin
 	.if	uMsg == WM_INITDIALOG
 		; 加载图标并显示蓝色背景
 		invoke InitUI, hWin, wParam, lParam
@@ -597,6 +614,11 @@ DialogMain proc,
 				invoke SelectSong, hWin
 			.elseif hiword == LBN_DBLCLK
 				invoke SelectPlaySong, hWin
+				.if curTheme == 0
+					invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+				.else
+					invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
+				.endif
 				invoke PlayCurrentSong, hWin
 			.endif
 		.elseif loword == IDC_DELETE_CURRENT_SONG
@@ -878,6 +900,8 @@ SelectGroup proc,
 
 	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0 
 	mov	indexToSet, eax ; 获取当前被选中的group index
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETLBTEXT, indexToSet, addr currentGroupName
+	invoke SendDlgItemMessage, hWin, IDC_LIST_NAME, WM_SETTEXT, 0, addr currentGroupName
 
 	.if eax == CB_ERR ; 如果没有选中group
 		mov currentPlayGroup, DEFAULT_SONG_GROUP ; 那么设置现在没有选中歌单
@@ -1376,6 +1400,40 @@ InitUI proc,
 	hWin : dword, 
 	wParam : dword, 
 	lParam : dword
+	local @listNameFont
+	local @mainGroupFont
+	local @currentSongFont
+	local @numbersFont
+	local @lyricFont
+	; 设置static的字体字号
+	invoke CreateFont, -28, -14, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, 
+		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
+		DEFAULT_QUALITY, FF_DONTCARE, addr fontName
+	mov	@listNameFont, eax
+	invoke CreateFont, -14, -7, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, 
+		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
+		DEFAULT_QUALITY, FF_DONTCARE, addr fontName
+	mov @mainGroupFont, eax
+	invoke CreateFont, -14, -7, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, 
+		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
+		DEFAULT_QUALITY, FF_DONTCARE, addr fontName
+	mov @currentSongFont, eax
+	invoke CreateFont, -10, -5, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, 
+		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
+		DEFAULT_QUALITY, FF_DONTCARE, addr fontName
+	mov @numbersFont, eax
+	invoke CreateFont, -20, -10, 0, 0, FW_SEMIBOLD, TRUE, FALSE, FALSE, 
+		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
+		DEFAULT_QUALITY, FF_DONTCARE, addr fontName
+	mov @lyricFont, eax
+	invoke SendDlgItemMessage, hWin, IDC_LIST_NAME, WM_SETFONT, @listNameFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, WM_SETFONT, @mainGroupFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_CURRENT_PLAY_SONG_TEXT, WM_SETFONT, @currentSongFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_CURRENT_STATIC, WM_SETFONT, @currentSongFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETFONT, @numbersFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETFONT, @numbersFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_SOUND_TEXT, WM_SETFONT, @numbersFont, NULL
+	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETFONT, @lyricFont, NULL
 	; 加载主题背景图片
 	invoke LoadBitmap, hInstance, IDB_BACKGROUND_BLUE
 	mov bmp_Theme_Blue, eax

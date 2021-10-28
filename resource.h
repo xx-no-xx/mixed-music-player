@@ -90,7 +90,8 @@
 #define IDC_SCROLLBAR2                  1053
 #define IDC_THEME                       1054
 #define IDC_CLOSE                       1055
-#define IDC_LYRICS                      1056
+#define IDC_LIST_NAME                   1056
+#define IDC_LYRICS                      1057
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
@@ -102,7 +103,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        186
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1057
+#define _APS_NEXT_CONTROL_VALUE         1058
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
