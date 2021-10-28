@@ -54,6 +54,7 @@ IDC_CURRENT_STATIC              equ 1050 ; "当前播放的歌曲是"title
 IDC_CURRENT_PLAY_SONG_TEXT      equ 1051 ; 当前播放的歌曲的展示
 IDC_THEME                       equ 1054 ; 更换主题
 IDC_CLOSE                       equ 1055 ; 关闭窗口
+IDC_LYRICS                      equ 1056 ; 歌词文本
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
@@ -441,10 +442,10 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+ofnInitialDir BYTE "C:\Users\43722\Desktop", 0 ; default open C only for test
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1605,6 +1606,9 @@ StopCurrentSong proc,
 	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, 0, 0
 	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 	invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
+
+	;初始化歌词文本
+	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETTEXT, 0, NULL
 	ret
 StopCurrentSong endp
 
@@ -1663,6 +1667,9 @@ PlayCurrentSong proc,
 	invoke wsprintf, ADDR mciCommand, ADDR timeFormat, eax, edx
 	invoke SendDlgItemMessage, hWin, IDC_COMPLETE_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 	;修改图标
+
+	;设置歌词
+	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETTEXT, 0, addr currentPlayLyricStr 
 	ret
 PlayCurrentSong endp
 
@@ -1752,6 +1759,10 @@ GetPlayPosition proc,
 
 	;设置PLAY_TIME_TEXT
 	invoke SetTimeText, hWin
+
+	;设置歌词
+	invoke FindLyricAtTime, currentPlaySingleSongPos
+	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETTEXT, 0, addr currentPlayLyricStr 
 
 	;检查歌曲是否结束
 	.if playState != STATE_STOP
@@ -1988,5 +1999,10 @@ REPEAT_READ:
 
 GetLyricPath endp
 
+FindLyricAtTime proc,
+	timeStamp : dword
+
+	ret
+FindLyricAtTime endp
 
 END WinMain
