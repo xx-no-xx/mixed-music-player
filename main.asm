@@ -52,6 +52,8 @@ IDC_PLAY_TIME_TEXT              equ 1048 ; 已经播放了多少时间
 IDC_SOUND_TEXT                  equ 1049 ; 声音大小的文字
 IDC_CURRENT_STATIC              equ 1050 ; "当前播放的歌曲是"title
 IDC_CURRENT_PLAY_SONG_TEXT      equ 1051 ; 当前播放的歌曲的展示
+IDC_THEME                       equ 1054 ; 更换主题
+IDC_CLOSE                       equ 1055 ; 关闭窗口
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
@@ -94,6 +96,10 @@ IDI_ADD_SONG_ORANGE             equ	178
 IDI_NEW_LIST                    equ	179
 IDI_REMOVE_LIST                 equ	180
 IDI_REMOVE_SONG                 equ	181
+IDI_CHANGE_BLUE                 equ	182
+IDI_CHANGE_ORANGE               equ	183
+IDI_CROSS_BLUE                  equ	184
+IDI_CROSS_ORANGE                equ	185
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -254,10 +260,13 @@ KeyDown proto,
 	wParam : dword, 
 	lParam : dword
 
-InitUI proto, 
+InitUI proto,	; 加载资源
 	hWin : dword, 
 	wParam : dword,
 	lParam : dword
+
+ChangeTheme proto, 
+	hWin : dword
 
 PlayMusic proto, ; 播放/暂停音乐	
 	hWin : dword
@@ -474,7 +483,11 @@ ico_Add_Song_Orange		dword	?	; 橙色添加歌曲
 ico_New_List			dword	?	; 新建歌单
 ico_Remove_List			dword	?	; 删除歌单
 ico_Remove_Song			dword	?	; 删除歌曲
-curTheme	word	0	; 当前主题编号
+ico_Change_Blue			dword	?	; 蓝色更换主题
+ico_Change_Orange		dword	?	; 橙色更换主题
+ico_Cross_Blue			dword	?	; 蓝色关闭
+ico_Cross_Orange		dword	?	; 橙色关闭
+curTheme	word	1	; 当前主题编号
 ; +++++++++++++++code++++++++++++++++++
 .code
 
@@ -502,18 +515,9 @@ DialogMain proc,
 	mov	hiword, ax
 
 	.if	uMsg == WM_INITDIALOG
+		; 加载图标并显示蓝色背景
 		invoke InitUI, hWin, wParam, lParam
-
-		; 固定背景bitmap
-		invoke GetWindowRect, hWin, addr rect
-		invoke GetDlgItem, hWin, IDC_BACKGROUND 
-
-		mov	ecx, rect.right
-		sub ecx, rect.left
-		mov ebx, rect.bottom
-		sub ebx, rect.top
-
-		invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
+		invoke ChangeTheme, hWin
 
 		; 设置初始播放歌曲的名称
 		invoke GetDlgItem, hWin, IDC_CURRENT_PLAY_SONG_TEXT 
@@ -594,6 +598,19 @@ DialogMain proc,
 		.elseif loword == IDC_MUTE_SONG
 			.if hiword == BN_CLICKED
 				xor isMuted, 1
+				.if isMuted == 1
+					.if curTheme == 0
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
+					.else
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Orange
+					.endif
+				.else
+					.if curTheme == 0
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Blue
+					.else
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Orange
+					.endif
+				.endif
 				invoke AlterVolume, hWin
 			.endif
 		.elseif loword == IDC_PRE_BUTTON
@@ -615,6 +632,14 @@ DialogMain proc,
 		.elseif loword == IDC_FAST_BACKWARD
 			.if hiword == BN_CLICKED
 				invoke FastBackward, hWin
+			.endif
+		.elseif loword == IDC_CLOSE
+			.if hiword == BN_CLICKED
+				invoke SendMessage, hWin, WM_CLOSE, NULL, NULL
+			.endif
+		.elseif loword == IDC_THEME
+			.if hiword == BN_CLICKED
+				invoke ChangeTheme, hWin
 			.endif
 		.else
 			; do something
@@ -1305,25 +1330,11 @@ LButtonDown proc,
 	shrd eax, ebx, 16
 	mov @mouseY, ax
 	; 在上半部分拖动窗口
-	.if @mouseY < 70
+	.if @mouseY < 50
 		invoke SendMessage, hWin, WM_NCLBUTTONDOWN, HTCAPTION, 0
-	.endif
-	; 处理按钮
-	.if @mouseX > 771 && @mouseX < 791 && @mouseY > 19 && @mouseY < 39
-		invoke EndDialog,hWin,0
-		.if hNewGroup != 0
-			invoke EndDialog, hNewGroup, 0
-		.endif
-	.elseif @mouseX > 739 && @mouseX < 759 && @mouseY > 19 && @mouseY < 39
-		invoke ChangeTheme, hWin
 	.endif
 	ret
 LButtonDown endp
-;// 鼠标左键按下事件处理函数
-;void LButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {
-; mouseX = LOWORD(lParam);
-; mouseY = HIWORD(lParam);
-; mouseDown = true;
 
 ; 键盘按下事件处理
 KeyDown proc, 
@@ -1352,6 +1363,7 @@ InitUI proc,
 	mov bmp_Theme_Blue, eax
 	invoke LoadBitmap, hInstance, IDB_BACKGROUND_ORANGE
 	mov bmp_Theme_Orange, eax
+
 	; 加载图标
 	invoke LoadBitmap, hInstance, IDB_ADD_SONG_BLUE
 	mov bmp_Add_Song_Blue, eax
@@ -1420,43 +1432,108 @@ InitUI proc,
 	mov ico_Remove_Song, eax
 	invoke LoadImage, hInstance, IDI_CLEAN_SONG, IMAGE_ICON, 120, 25, NULL
 	mov ico_Clean_Song, eax
-	; 测试图片放置到测试元件
+
+	invoke LoadImage, hInstance, IDI_CHANGE_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Change_Blue, eax
+	invoke LoadImage, hInstance, IDI_CHANGE_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Change_Orange, eax
+	invoke LoadImage, hInstance, IDI_CROSS_BLUE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Cross_Blue, eax
+	invoke LoadImage, hInstance, IDI_CROSS_ORANGE, IMAGE_ICON, 20, 20, NULL
+	mov ico_Cross_Orange, eax
+
+	; 加载相同资源到控件
 	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
+	invoke SendDlgItemMessage, hWin, IDC_BACKGROUND_ORANGE, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Orange
 	invoke SendDlgItemMessage, hWin, IDC_ADD_NEW_GROUP, BM_SETIMAGE, IMAGE_ICON, ico_New_List
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_ICON, ico_Remove_List
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_ICON, ico_Clean_Song
-	invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Blue
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Remove_Song
-
-	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
-	invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Blue
-	invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Blue
-	invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Blue
-	invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Blue
-	invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
-	invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
-;	mov eax, IMG_START
-;	invoke LoadImage, hInstance, eax,IMAGE_ICON,32,32,NULL
-;	invoke SendDlgItemMessage,hWin,IDC_paly_btn, BM_SETIMAGE, IMAGE_ICON, eax
 	ret
 InitUI endp
 
 ; 变更主题
 ChangeTheme proc, 
 	hWin : dword
-	ret
-;	tochange-tochange-tochange-tochange
+	; 计算当前主题号
 	mov ax, curTheme
 	inc ax
 	mov	bl, 2
 	div	bl
 	movzx ax, ah
 	mov curTheme, ax
-	.if curTheme == 1
-		invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Orange
+
+	; 显示背景并把当前设置为不可见
+	.if curTheme == 0
+		; 隐藏当前背景
+		invoke GetDlgItem, hWin, IDC_BACKGROUND
+		invoke ShowWindow, eax, SW_SHOW
+		; 显示目标背景
+		invoke GetDlgItem, hWin, IDC_BACKGROUND_ORANGE
+		invoke ShowWindow, eax, SW_HIDE
+		; 对应图标放置到控件
+		.if playState == STATE_PLAY
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+		.endif
+		.if isMuted == 0
+			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
+		.endif
+		invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Blue
+		invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Blue
+		invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Blue
+		invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Blue
+		invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Blue
+		invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
+		invoke SendDlgItemMessage, hWin, IDC_THEME, BM_SETIMAGE, IMAGE_ICON, ico_Change_Blue
+		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Blue
+		; 固定背景bitmap
+		invoke GetWindowRect, hWin, addr rect
+		invoke GetDlgItem, hWin, IDC_BACKGROUND
+		mov	ecx, rect.right
+		sub ecx, rect.left
+		mov ebx, rect.bottom
+		sub ebx, rect.top
 	.else
-		invoke SendDlgItemMessage, hWin, IDC_BACKGROUND, STM_SETIMAGE, IMAGE_BITMAP, bmp_Theme_Blue
+		; 隐藏当前背景
+		invoke GetDlgItem, hWin, IDC_BACKGROUND_ORANGE
+		invoke ShowWindow, eax, SW_SHOW
+		; 显示目标背景
+		invoke GetDlgItem, hWin, IDC_BACKGROUND
+		invoke ShowWindow, eax, SW_HIDE
+		; 对应图标放置到控件
+		.if playState == STATE_PLAY
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Orange
+		.endif
+		.if isMuted == 0
+			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Orange
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Orange
+		.endif
+		invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Orange
+		invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Orange
+		invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Orange
+		invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Orange
+		invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Orange
+		invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Orange
+		invoke SendDlgItemMessage, hWin, IDC_THEME, BM_SETIMAGE, IMAGE_ICON, ico_Change_Orange
+		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Orange
+		; 固定背景bitmap
+		invoke GetWindowRect, hWin, addr rect
+		invoke GetDlgItem, hWin, IDC_BACKGROUND_ORANGE
+		mov	ecx, rect.right
+		sub ecx, rect.left
+		mov ebx, rect.bottom
+		sub ebx, rect.top
 	.endif
+
+	; 获得并调整窗口位置
+	invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
 	ret
 ChangeTheme endp
 
