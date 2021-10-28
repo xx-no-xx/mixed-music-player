@@ -1571,7 +1571,7 @@ PlayMusic proc,
 		invoke PlayCurrentSong, hWin
 	.elseif playState == STATE_PLAY ; 当前为播放态
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
-		invoke PauseCurrentMusic
+		invoke PauseCurrentSong
 	.elseif playState == STATE_PAUSE ; 当前为暂停态
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
 		invoke ResumeCurrentSong
