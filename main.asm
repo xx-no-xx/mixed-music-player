@@ -323,10 +323,15 @@ GetLyricPath proto ; 找到lyric对应的路径
 
 ReadLyric proto ; 读取currentPlaySingleSong对应的lyric文件
 
-UpdateNextLyric proto ; 更新下一句歌词到currentPlayLyricStr
-
 FindLyricAtTime proto, ; 找到timestamp时应该播放的歌词
 	timeStamp : dword
+
+SetInitLyric proto ; 设置初始歌词
+
+CollectLyricStr proto, ;复制source的lyric str到target
+	sourceStr : dword,
+	targetStr : dword
+	
 	
 
 ; +++++++++++++++++++ data +++++++++++++++++++++
@@ -387,11 +392,14 @@ currentGroupSongs song MAX_GROUP_SONG dup(<,>) ; 当前播放歌单的所有歌曲信息
 maxGroupId dword 0 ; 用于分配新的组别id
 
 hasLyric dword LYRIC_NOT_EXIST ; 歌词是否存在
+currentPlayLyricPos dword 0 ; 指针，指向当前index对应的结构体位置
 currentPlayLyricIndex dword DEFAULT_PLAY_LYRIC; 目前正在播放的歌词是第几句
-currentPlayLyricPath dword MAX_FILE_LEN dup(0) ; 歌词所处的路径
+currentPlayLyricPath byte MAX_FILE_LEN dup(0) ; 歌词所处的路径
 currentPlayLyricStr byte MAX_SINGLE_LYRIC_LEN dup(0); 目前正在播放的歌词的str形式
+currentLyricTime dword 0; 现在播放的歌曲的时间戳
 nextLyricTime dword INF; 下一句要播放的歌曲的时间戳
-lyricSuffix dword "lrc", 0
+lyricSuffix byte "lrc", 0
+lyricCounter dword 0
 
 currentLyrics lyric MAX_LYRIC_NUM dup(<,>)
 
@@ -432,9 +440,10 @@ readGroupDetailStr byte MAX_GROUP_DETAIL_LEN   dup(0)
 currentSongNameOFN byte MAX_FILE_LEN dup(0)
 readFilePathStr byte MAX_FILE_LEN  dup(0)
 readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
-buffer byte 0
+buffer byte 0,0
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
 inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
+readTime byte 10 dup(0)
 ; to change "1" -> 0
 
 ; ++++++++++++++测试专用+++++++++++++ 
@@ -730,7 +739,6 @@ AddSingleSongOFN proc,
 
 	invoke lstrlen, ofn.lpstrFile
 	mov	 lpstrLength, eax ; 设置openfilename中文件名称长度
-
 	invoke WriteFile, handler, addr divideLine, length divideLine,  addr BytesWritten, NULL ; 写换行符
 	invoke WriteFile, handler, addr groupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesWritten, NULL ; 写song Group的str模式
 
@@ -1120,6 +1128,7 @@ SelectPlaySong proc,; 设置当前正在播放的歌曲
 	.if currentPlaySingleSongIndex == DEFAULT_PLAY_SONG
 		invoke SetWindowText, staticWin, addr nameNone
 	.else
+		invoke SetInitLyric
 		invoke GetFileTitle, addr currentPlaySingleSongPath, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
 		invoke SetWindowText, staticWin, addr readSongNameStr
 	; readSongNameStr
@@ -1668,12 +1677,10 @@ PlayCurrentSong endp
 
 PlayMusic proc,
     hWin : dword 
-	; test
-	invoke CheckPlayCurrentSong, hWin
+	invoke CheckPlayCurrentSong, hWin ; 查看要播放的歌曲是否存在
 	.if eax == 0
 		ret
 	.endif
-	; end test
 
 	.if playState == STATE_STOP ; 当前为停止状态
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
@@ -1951,6 +1958,226 @@ ChangeMode proc,
 	ret
 ChangeMode endp
 
+FindLyricAtTime proc,
+	timeStamp : dword
+	.if hasLyric == LYRIC_NOT_EXIST
+		invoke RtlZeroMemory, addr currentPlayLyricStr, sizeof currentPlayLyricStr
+		ret
+	.endif
+	mov eax, currentLyricTime
+	mov ebx, currentPlayLyricIndex
+	mov esi, currentPlayLyricPos
+
+	.if timeStamp < eax 
+REPEAT_PRE_FIND:
+		.if timeStamp >= eax 
+			mov currentLyricTime, eax
+			jmp END_PRE_FIND
+		.endif
+		sub ebx, 1
+		sub esi, size lyric
+		mov nextLyricTime, eax
+		mov eax, (lyric ptr [esi]).timeStamp
+		jmp REPEAT_PRE_FIND
+END_PRE_FIND:
+	.endif
+
+	mov eax, nextLyricTime
+	mov ebx, currentPlayLyricIndex
+	mov esi, currentPlayLyricPos
+	.if timeStamp >= eax 
+REPEAT_NEXT_FIND:
+		.if timeStamp < eax 
+			mov nextLyricTime, eax
+			jmp END_NEXT_FIND
+		.endif
+		add ebx, 1
+		add esi, size lyric
+		mov currentLyricTime, eax
+		add esi, size lyric
+		mov eax, (lyric ptr [esi]).timeStamp
+		sub esi, size lyric
+		jmp  REPEAT_NEXT_FIND
+END_NEXT_FIND:
+	.endif
+
+	ret
+FindLyricAtTime endp
+
+SetInitLyric proc
+	invoke ReadLyric
+	.if hasLyric ==  LYRIC_NOT_EXIST
+		ret
+	.endif
+	mov currentPlayLyricIndex, 0
+	mov esi, offset currentLyrics
+	add esi, size dword
+	invoke CollectLyricStr, esi, addr currentPlayLyricStr
+	mov currentPlayLyricPos, esi
+	add esi, size lyric
+	push (lyric ptr [esi]).timeStamp
+	pop nextLyricTime
+	mov currentPlayLyricPos, esi
+	ret
+SetInitLyric endp
+
+CollectLyricStr proc,
+	sourceStr : dword,
+	targetStr : dword
+
+	mov esi, sourceStr
+	mov edi, targetStr
+	mov ecx, MAX_SINGLE_LYRIC_LEN - 1
+	cld
+	rep movsb
+	ret
+CollectLyricStr endp
+
+ReadLyric proc
+
+	local BytesRead : dword
+	local timeMinute : dword
+	local timeSecond : dword
+	local timeMillisecond : dword
+	local lyricSavePos : dword
+	local strPos : dword
+	local strConter : dword
+	local const10 : dword
+	local const60 : dword
+	local const1000 : dword
+
+	mov const10, 10
+	mov const60, 60
+	mov const1000, 1000
+
+	mov  currentLyricTime, 0
+	mov currentPlayLyricIndex, DEFAULT_PLAY_LYRIC
+	mov nextLyricTime,INF
+	invoke RtlZeroMemory, addr currentPlayLyricStr, sizeof currentPlayLyricStr
+	invoke RtlZeroMemory, addr currentLyrics, sizeof currentLyrics
+	invoke GetLyricPath
+	.if hasLyric == LYRIC_NOT_EXIST ; 如果歌词文件不存在，那么设置这首歌没有歌曲文件
+		ret
+	.endif
+
+	push offset currentLyrics
+	pop lyricSavePos
+
+	mov esi, lyricSavePos
+	mov (lyric  ptr [esi]).timeStamp, 0
+	add esi, size dword
+	invoke GetFileTitle, addr currentPlaySingleSongPath, esi, MAX_SINGLE_LYRIC_LEN - 1
+	mov esi, lyricSavePos
+	add esi, size lyric
+	mov lyricSavePos, esi
+	add lyricCounter, 1
+;	invoke CollectLyricStr, 
+
+	invoke CreateFile, offset currentPlayLyricPath, GENERIC_READ,0 ,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0
+	mov handler, eax
+
+
+REPEAT_READ:
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 ; 读[
+	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	add lyricCounter, 1
+
+	mov timeMinute, 0
+	mov timeSecond, 0
+	mov timeMillisecond, 0
+FIND_MINUTE: ; 读分钟
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
+	.if [buffer] != ':'
+		push eax
+		mov eax, timeMinute
+		mul const10
+		mov timeMinute, eax
+		invoke atol, addr buffer
+		add timeMinute, eax
+		pop eax
+		jmp FIND_MINUTE
+	.endif
+
+FIND_SECOND: ; 读秒钟位
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
+	.if [buffer] != '.'
+		push eax
+		mov eax, timeSecond
+		mul const10
+		mov timeSecond, eax
+		invoke atol, addr buffer
+		add timeSecond, eax
+		pop eax
+		jmp FIND_SECOND
+	.endif
+
+FIND_MILLISECOND:
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
+	.if [buffer] != ']'
+		push eax
+		mov eax, timeMillisecond
+		mul const10
+		mov timeMillisecond, eax
+		invoke atol, addr buffer
+		add timeMillisecond, eax
+		pop eax
+		jmp FIND_MILLISECOND
+	.endif
+
+	push eax
+	mov eax, timeMinute
+	mul const60
+	mul const1000
+	add timeMillisecond, eax
+	mov eax,timeSecond
+	mul const1000
+	add timeMillisecond, eax
+	pop eax
+
+	push esi
+	mov esi, lyricSavePos
+	push timeMillisecond
+	pop (lyric ptr [esi]).timeStamp
+	mov esi, lyricSavePos
+	add esi, size dword
+	mov strPos, esi
+	pop esi
+
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0  ; 读空格
+READ_STR:
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
+	.if BytesRead == 0
+		jmp END_READ
+	.endif
+	mov dl, [buffer]
+	.if dl != 0ah
+		mov esi, offset buffer
+		mov edi, strPos
+		mov ecx, 1
+		cld
+		rep movsb
+		add strPos, size byte
+		jmp READ_STR
+	.endif
+
+	mov esi, lyricSavePos
+	add esi, size lyric
+	mov lyricSavePos, esi
+	jmp REPEAT_READ
+END_READ:
+	invoke CloseHandle, handler
+
+	mov esi, lyricSavePos
+	mov (lyric  ptr [esi]).timeStamp, INF
+	add esi, size lyric
+	mov lyricSavePos, esi
+	add lyricCounter, 1
+
+	ret
+ReadLyric endp
+
 GetLyricPath proc
 
 	local pointPos : dword
@@ -1960,13 +2187,15 @@ GetLyricPath proc
 		ret
 	.endif
 
-	invoke CollectSongPath, addr currentPlaySingleSongPath, addr currentPlayLyricStr
-	mov	ecx, offset currentPlayLyricStr
+	invoke CollectSongPath, addr currentPlaySingleSongPath, addr currentPlayLyricPath
+	mov	ecx, offset currentPlayLyricPath
+	mov pointPos, ecx
+
 
 
 REPEAT_READ:
-	mov eax, [ecx]
-	.if eax == '.'
+	mov al, [ecx]
+	.if al == '.'
 		mov pointPos, ecx
 	.endif
 	.if eax != 0
@@ -1974,18 +2203,22 @@ REPEAT_READ:
 		jmp REPEAT_READ
 	.endif
 
-	mov	esi, pointPos
-	add esi, size byte
-	mov	edi, offset lyricSuffix
+	mov	esi, offset lyricSuffix
+	mov	edi, pointPos
+	add edi, size byte
+;	mov edi, offset currentPlayLyricPath
 	mov ecx, 4
 	cld
 	rep movsb
 
-	invoke CheckFileExist, addr currentPlayLyricStr
+
+	invoke CheckFileExist, addr currentPlayLyricPath
 	.if eax == FILE_NOT_EXIST
 		mov hasLyric, LYRIC_NOT_EXIST
+		ret
 	.endif
-
+	mov hasLyric, LYRIC_DO_EXIST
+	ret
 GetLyricPath endp
 
 
