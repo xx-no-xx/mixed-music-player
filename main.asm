@@ -129,6 +129,9 @@ MAX_GROUP_SONG equ 30 ; ¸èµ¥ÄÚ¸èÇúµÄ×î´óÊı
 MAX_GROUP_NUM equ 10 ; ×î´óµÄ¸èµ¥ÊıÁ¿
 MAX_SONG_NAME_LEN equ 100; ×î´ó¸èÇúµÄÃû×ÖµÄ³¤¶È ;todotodotodo
 
+MAX_SINGLE_LYRIC_LEN equ 100; Ã¿¾ä¸è´ÊµÄ×Ö·û´®µÄ×î´ó³¤¶È
+MAX_LYRIC_NUM equ 300; ¸è´ÊµÄÊıÁ¿
+
 MAX_ALL_SONG_NUM equ 300 ; È«Ìå¸èÇúµÄ×î´óÊıÄ¿£¨=MAX_GROUP_SONG * MAX_GROUP_NUM£©
 
 ; Êµ¼Ê×î´óLENÓ¦¸Ã-1£¬ ÕâÊÇÒòÎªstr×îºóĞèÒªÎª0£¬·ñÔòÊä³öÊ±»á¿çÔ½µ½±ğµÄ´æ´¢ÇøÓò¡£
@@ -296,6 +299,11 @@ GetPreNxtSong proto, ; ¸üĞÂÑ¡ÔñÉÏÒ»Ê×»òÕßÏÂÒ»Ê×¡£Èç¹ûÑ¡ÖĞµÄÕâÊ×¸è²»´æÔÚ£¬ÄÇÃ´ÌáÊ
 ChangeMode proto, ; ÇĞ»»Ä£Ê½
 	hWin : dword
 
+lyric struct
+	timeStamp dword 0; ¸è´Ê¶ÔÓ¦µÄºÁÃë
+	lyricStr byte MAX_SINGLE_LYRIC_LEN dup(0)
+lyric ends
+
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -364,7 +372,9 @@ delAllSongs song MAX_ALL_SONG_NUM dup(<,>)
 ; ++++++++++++++µ¼ÈëÎÄ¼şOPpenFileName½á¹¹++++++++++++++
 ofn OPENFILENAME <>
 ofnTitle BYTE 'µ¼ÈëÒôÀÖ', 0	
-ofnFilter byte "Media Files(*.mp3, *.wav, *.mid, *.wmv)", 0, "*.mp3;*.wav;*.wma;*.mid", 0, 0
+ofnFilter byte "Media Files(*.mp3, *.wav, *.mid, *.wmv, *.m4a, *.aac, *.aiff, *.flac)", 0, "*.mp3;*.wav;*.wma;*.mid;*.m4a;*.aac;*.aiff;*.flac", \
+0, "All Files(*.*)", 0, "*.*",\
+0, 0
 
 ; ++++++++++++++Message Box ÌáÊ¾ĞÅÏ¢++++++++++++++++++
 deleteNone byte "ÄúÃ»ÓĞÑ¡ÖĞ¸èµ¥£¬²»ÄÜÉ¾³ı¡£",0
@@ -400,10 +410,10 @@ inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
 ; ++++++++Çë¸ù¾İ×Ô¼ºµÄ»úÆ÷Â·¾¶ĞŞ¸Ä+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; Í¼Ïñ×ÊÔ´Êı¾İ
 bmp_Theme_Blue			dword	?	; À¶É«Ö÷Ìâ±³¾°
