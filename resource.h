@@ -56,6 +56,10 @@
 #define IDI_NEW_LIST                    179
 #define IDI_REMOVE_LIST                 180
 #define IDI_REMOVE_SONG                 181
+#define IDI_CHANGE_BLUE                 182
+#define IDI_CHANGE_ORANGE               183
+#define IDI_CROSS_BLUE                  184
+#define IDI_CROSS_ORANGE                185
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_FILE_SYSTEM2                1002
 #define IDC_COMBO1                      1009
@@ -84,6 +88,8 @@
 #define IDC_CURRENT_STATIC              1050
 #define IDC_CURRENT_PLAY_SONG_TEXT      1051
 #define IDC_SCROLLBAR2                  1053
+#define IDC_THEME                       1054
+#define IDC_CLOSE                       1055
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
@@ -93,9 +99,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        182
+#define _APS_NEXT_RESOURCE_VALUE        186
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1054
+#define _APS_NEXT_CONTROL_VALUE         1056
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
