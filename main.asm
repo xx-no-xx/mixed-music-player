@@ -12,8 +12,6 @@ include winmm.inc
 include gdi32.inc
 include shlwapi.inc
 
-; irvine32.inc
-
 includelib masm32.lib
 includelib user32.lib
 includelib kernel32.lib
@@ -27,6 +25,7 @@ includelib Shlwapi.lib
 ;---------------- control -------------
 IDD_DIALOG 						equ	101 ; 主播放对话框
 IDD_DIALOG_ADD_NEW_GROUP		equ 105 ; 加入新歌单的对话框
+IDD_DIALOG_CHANGE_GROUP_NAME	equ 106 ; 修改当前歌单的名称
 
 IDC_FILE_SYSTEM 				equ	1001 ; 导入歌单的按钮
 IDC_MAIN_GROUP				    equ 1017 ; 展示当前选择歌单的所有歌曲
@@ -56,6 +55,10 @@ IDC_THEME                       equ 1054 ; 更换主题
 IDC_CLOSE                       equ 1055 ; 关闭窗口
 IDC_LIST_NAME                   equ 1056 ; 歌单名称
 IDC_LYRICS                      equ 1057 ; 歌词窗口
+
+IDC_BUTTON_CHANGE_GROUP_NAME		equ 1060 ; 歌单变换的ok按钮
+IDC_CHANGE_GROUP_NAME			equ 1061 ; 歌单变换名字的输入框
+IDC_START_CHANGE_NAME			equ 1062 ; 主对话框上开始修改名字界面
 
 IDC_BACKGROUND					equ 2001 ; 背景图层
 IDC_BACKGROUND_ORANGE           equ 2002 ; 橙色背景图层
@@ -333,6 +336,17 @@ SetInitLyric proto ; 设置初始歌词
 CollectLyricStr proto, ;复制source的lyric str到target
 	sourceStr : dword,
 	targetStr : dword
+
+StartChangeGroupName proto; 开始打开歌单名称
+
+ChangeGroupNameMain proto, ; 歌单修改名字的对话框主程序
+	hWin : dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
+
+ChangeGroupName proto, ; 修改歌单名称
+	hWin : dword
 	
 	
 
@@ -426,11 +440,13 @@ playSongInvalid byte "您预计播放的歌曲不存在，已自动为您删除不存在的歌曲。", 0
 playPreNxtNone byte "您没有选中歌曲，不能播放上一首/下一首", 0
 nameNone byte "暂无歌曲", 0
 lyricNone byte "当前歌曲没有歌词文件", 0
+changeNone byte "您没有选中歌单，不能修改歌单名称。", 0
 
 ; +++++++++++++++程序所需部分窗口变量+++++++++++++++
 hInstance dword ?
 hMainDialog dword ?
 hNewGroup dword ?
+hChangeName dword ?
 
 ; +++++++++++++++配置信息+++++++++++(因为测试而注释)
 ;songData BYTE ".\data.txt", 0
@@ -457,10 +473,10 @@ simpleText byte "somethingrighthere", 0ah, 0
 ;ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
 ;songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -675,11 +691,15 @@ DialogMain proc,
 			.endif
 		.elseif loword == IDC_CLOSE
 			.if hiword == BN_CLICKED
-				invoke SendMessage, hWin, WM_CLOSE, NULL, NULL
+				invoke SendMessage, hWin, WM_CLOSE, NULL, NULL ; 
 			.endif
 		.elseif loword == IDC_THEME
 			.if hiword == BN_CLICKED
 				invoke ChangeTheme, hWin
+			.endif
+		.elseif loword == IDC_START_CHANGE_NAME
+			.if hiword == BN_CLICKED
+				invoke StartChangeGroupName
 			.endif
 		.else
 			; do something
@@ -690,6 +710,9 @@ DialogMain proc,
 		invoke EndDialog,hWin,0
 		.if hNewGroup != 0
 			invoke EndDialog, hNewGroup, 0
+		.endif
+		.if hChangeName != 0
+			invoke EndDialog, hChangeName, 0
 		.endif
 	.elseif uMsg == WM_HSCROLL
 		invoke GetDlgCtrlID, lParam
@@ -711,7 +734,6 @@ DialogMain proc,
 	.else
 		; do sth
 	.endif
-
 	xor eax, eax ; eax = 0
 	ret
 DialogMain endp
@@ -994,6 +1016,10 @@ REPEAT_READ:
 		jmp END_READ
 	.endif
 	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ;读组别的id
+	invoke atol, addr readGroupDetailStr
+	.if eax > maxGroupId 
+		mov maxGroupId, eax
+	.endif
 
 	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; 读换行符
 	invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL; 读group的name
@@ -2323,5 +2349,84 @@ REPEAT_READ:
 	mov hasLyric, LYRIC_DO_EXIST
 	ret
 GetLyricPath endp
+
+StartChangeGroupName proc; 开始打开歌单名称
+	.if currentPlayGroup == DEFAULT_SONG_GROUP
+		invoke MessageBox, hMainDialog, addr changeNone, 0, MB_OK
+		ret
+	.endif
+	invoke DialogBoxParam, hInstance, IDD_DIALOG_CHANGE_GROUP_NAME, 0, addr ChangeGroupNameMain, 0 ; 打开输入新建歌单名称的对话框
+	ret
+StartChangeGroupName endp
+
+ChangeGroupNameMain proc, ; 歌单修改名字的对话框主程序
+	hWin : dword,
+	uMsg : dword,
+	wParam : dword,
+	lParam : dword
+
+	.if	uMsg == WM_INITDIALOG
+		push hWin
+		pop hChangeName ; 存储当前对话框的句柄，以便在父窗口关闭时关闭
+		invoke SendDlgItemMessage, hWin, IDC_CHANGE_GROUP_NAME, EM_LIMITTEXT, MAX_GROUP_NAME_LEN - 1, 0 ; 设置输入歌单名称的edit control的长度限制
+	.elseif	uMsg == WM_COMMAND
+		.if wParam == IDC_BUTTON_CHANGE_GROUP_NAME ; 如果确认加入歌单
+			invoke ChangeGroupName, hWin ; 加入歌单
+			invoke EndDialog, hWin, 0 ; 加入完毕，关闭窗口
+		.endif
+	.elseif	uMsg == WM_CLOSE
+		mov hChangeName, 0 ; 关闭窗口，并将当前句柄设为0，避免被父窗口重复关闭
+		invoke EndDialog,hWin,0
+	.else
+	.endif
+
+	xor eax, eax ; eax = 0
+	ret
+ChangeGroupNameMain endp
+
+ChangeGroupName proc, ; 修改歌单名称
+	hWin : dword
+
+	local counter : dword
+	local BytesRead : dword
+	local flag : dword
+
+
+	mov flag, GENERIC_WRITE
+	or flag, GENERIC_READ
+
+    invoke  CreateFile,offset groupData, flag, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt获取组别信息
+	mov		handler, eax
+
+	invoke SetFilePointer, handler, 0, 0, FILE_BEGIN ; 将文件指针引用到末尾
+
+	invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_RESETCONTENT, 0, 0 ; 清空group下拉框
+	mov	counter, 0
+REPEAT_RAW:
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; 读换行符
+	.if BytesRead == 0 ; 读到文件末尾，跳出
+		jmp END_READ
+	.endif
+	invoke ReadFile, handler, addr readGroupDetailStr, MAX_GROUP_DETAIL_LEN , addr BytesRead, NULL ; 读group信息
+	invoke ReadFile, handler, addr buffer, length divideLine,  addr BytesRead, NULL ; 读换行符
+
+	invoke atol, addr readGroupDetailStr ;转换字符串形式的group信息到dword
+	.if eax != currentPlayGroup 
+		invoke ReadFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL ; 读组别名称
+		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr ; 加入旧的组别
+	.else
+		invoke RtlZeroMemory, addr readGroupNameStr, sizeof readGroupNameStr ; 对readGroupNameStr区域清0
+		mov	readGroupNameStr, MAX_GROUP_NAME_LEN - 1 ;为了使用EM_GELINE,将readGroupNameStr的第一个位设置为要读取的长度
+		invoke SendDlgItemMessage, hWin, IDC_CHANGE_GROUP_NAME, EM_GETLINE, 0, addr readGroupNameStr ;获取edit control里用户输入的内容
+		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr ; 加入新的名字
+		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_SETCURSEL, counter, 0 ; 设置新的group焦点
+		invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL ; 写组别信息
+	.endif
+	add counter, 1
+	jmp REPEAT_RAW
+END_READ:
+	invoke CloseHandle, handler
+	ret
+ChangeGroupName endp
 
 END WinMain

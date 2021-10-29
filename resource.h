@@ -4,6 +4,7 @@
 //
 #define IDD_DIALOG                      101
 #define IDD_DIALOG_ADD_NEW_GROUP        105
+#define IDD_DIALOG_CHANGE_GROUP_NAME    106
 #define IDB_PLAY_BLUE                   121
 #define IDB_PLAY_ORANGE                 122
 #define IDB_MUTE_BLUE                   123
@@ -92,6 +93,10 @@
 #define IDC_CLOSE                       1055
 #define IDC_LIST_NAME                   1056
 #define IDC_LYRICS                      1057
+#define IDC_BUTTON_CHANGE_GROUP_NAME    1060
+#define IDC_CHANGE_GROUP_NAME           1061
+#define IDC_BUTTON1                     1062
+#define IDC_START_CHANGE_NAME           1062
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
@@ -103,7 +108,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        186
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1058
+#define _APS_NEXT_CONTROL_VALUE         1063
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
