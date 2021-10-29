@@ -473,10 +473,10 @@ simpleText byte "somethingrighthere", 0ah, 0
 ;ofnInitialDir BYTE "C:\Users\gassq\Desktop", 0 ; default open C only for test
 ;songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1853,7 +1853,9 @@ GetPlayPosition proc,
 		mov currentPlaySingleSongPos, eax
 		invoke wsprintf, addr mciCommand, addr cmd_setPos, eax
 		invoke mciExecute, addr mciCommand
-		invoke mciExecute, addr cmd_play
+		.if playState == STATE_PLAY
+			invoke mciExecute, addr cmd_play
+		.endif
 	.endif
 
 	;设置PLAY_TIME_TEXT
