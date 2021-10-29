@@ -97,6 +97,10 @@
 #define IDC_CHANGE_GROUP_NAME           1061
 #define IDC_BUTTON1                     1062
 #define IDC_START_CHANGE_NAME           1062
+#define IDC_SEARCH_BAR                  1064
+#define IDC_SEARCH_LIST                 1070
+#define IDC_LOCAL_SEARCH                1071
+#define IDC_NET_SEARCH                  1074
 #define IDC_BACKGROUND                  2001
 #define IDC_BACKGROUND_ORANGE           2002
 #define IDB_BACKGROUND_BLUE             3001
@@ -108,7 +112,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        186
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1063
+#define _APS_NEXT_CONTROL_VALUE         1076
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

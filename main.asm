@@ -3,6 +3,7 @@
 option casemap:none
 
 include windows.inc
+include dbghelp.inc
 include user32.inc
 include kernel32.inc
 include masm32.inc
@@ -55,6 +56,10 @@ IDC_THEME                       equ 1054 ; 更换主题
 IDC_CLOSE                       equ 1055 ; 关闭窗口
 IDC_LIST_NAME                   equ 1056 ; 歌单名称
 IDC_LYRICS                      equ 1057 ; 歌词窗口
+IDC_SEARCH_BAR                  equ 1064 ; 搜索栏
+IDC_SEARCH_LIST                 equ 1070 ; 搜索结果列表
+IDC_LOCAL_SEARCH                equ 1071 ; 本地搜索按钮
+IDC_NET_SEARCH                  equ 1074 ; 网络搜索按钮
 
 IDC_BUTTON_CHANGE_GROUP_NAME		equ 1060 ; 歌单变换的ok按钮
 IDC_CHANGE_GROUP_NAME			equ 1061 ; 歌单变换名字的输入框
@@ -157,7 +162,8 @@ INF							equ 4294967295 ;
 LYRIC_DO_EXIST				equ 0 ; 歌词存在
 LYRIC_NOT_EXIST				equ 1 ; 歌词不存在
 
-
+LOCAL_SEARCH				equ 0 ; 本地搜索
+NET_SEARCH					equ 1 ; 网络搜索
 ; +++++++++++++++++ function ++++++++++++++++
 DialogMain proto, ; 对话框主逻辑
 	hWin : dword,
@@ -348,8 +354,14 @@ ChangeGroupNameMain proto, ; 歌单修改名字的对话框主程序
 ChangeGroupName proto, ; 修改歌单名称
 	hWin : dword
 	
-	
+LocalSearch proto, ; 本地搜索
+	hWin : dword
 
+NetSearch proto, ; 网络搜索
+	hWin : dword
+
+GetLocalSearchSelectSong proto, ; 找到搜索栏中选中歌曲
+	hWin : dword
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -419,6 +431,9 @@ lyricCounter dword 0
 
 currentLyrics lyric MAX_LYRIC_NUM dup(<,>)
 
+searchText byte 128 DUP(0)
+searchResult dword MAX_GROUP_SONG dup(0)
+searchPattern dword LOCAL_SEARCH
 ; ++++++++++++++删除功能引入的临时存储变量++++++++++++++
 ; ++++ 你不应在除了删除功能之外的函数访问这些变量 +++++++
 delAllGroups songgroup MAX_GROUP_NUM dup(<,>)
@@ -624,6 +639,7 @@ DialogMain proc,
 			.if hiword == BN_CLICKED
 				invoke DeleteCurrentGroup, hWin
 				invoke ShowMainDialogView, hWin
+				invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_RESETCONTENT, 0, 0 ;清空搜索结果
 			.endif
 		.elseif loword == IDC_MAIN_GROUP
 			.if hiword == LBN_SELCHANGE
@@ -637,15 +653,31 @@ DialogMain proc,
 				.endif
 				invoke PlayCurrentSong, hWin
 			.endif
+		.elseif loword == IDC_SEARCH_LIST
+			.if hiword == LBN_DBLCLK
+				.if searchPattern == LOCAL_SEARCH
+					invoke GetLocalSearchSelectSong, hWin
+				.endif
+			.endif
 		.elseif loword == IDC_DELETE_CURRENT_SONG
 			.if hiword == BN_CLICKED
 				invoke DeleteCurrentPlaySong, hWin
 				invoke ShowMainDialogView, hWin
+				.if searchPattern == LOCAL_SEARCH
+					invoke LocalSearch, hWin
+				.else
+					invoke NetSearch, hWin
+				.endif			
 			.endif
 		.elseif loword == IDC_DELETE_INVALID_SONGS
 			.if hiword == BN_CLICKED
 				invoke DeleteInvalidSongs, hWin
 				invoke ShowMainDialogView, hWin
+				.if searchPattern == LOCAL_SEARCH
+					invoke LocalSearch, hWin
+				.else
+					invoke NetSearch, hWin
+				.endif	
 			.endif
 		.elseif loword == IDC_PLAY_BUTTON
 			.if hiword == BN_CLICKED
@@ -700,6 +732,16 @@ DialogMain proc,
 		.elseif loword == IDC_START_CHANGE_NAME
 			.if hiword == BN_CLICKED
 				invoke StartChangeGroupName
+			.endif
+		.elseif loword == IDC_LOCAL_SEARCH
+			.if hiword == BN_CLICKED
+				mov searchPattern, LOCAL_SEARCH
+				invoke LocalSearch, hWin
+			.endif
+		.elseif loword == IDC_NET_SEARCH
+			.if hiword == BN_CLICKED
+				mov searchPattern, NET_SEARCH
+				invoke NetSearch, hWin
 			.endif
 		.else
 			; do something
@@ -1710,6 +1752,10 @@ StopCurrentSong proc,
 
 	;初始化歌词文本
 	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETTEXT, 0, NULL
+
+	;初始化图标
+	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+
 	ret
 StopCurrentSong endp
 
@@ -2433,4 +2479,71 @@ END_READ:
 	ret
 ChangeGroupName endp
 
+LocalSearch proc,
+	hWin : dword
+	LOCAL len : dword
+	LOCAL index : dword
+	mov eax, currentPlayGroup
+	.if currentPlayGroup == DEFAULT_SONG_GROUP ; 如果当前未选择歌单，提示错误
+		;invoke MessageBox, hWin, addr addNone, 0, MB_OK
+		ret
+	.endif
+
+	.if numCurrentGroupSongs == 0 ; 如果没歌不搜索
+		ret
+	.endif
+
+	invoke GetDlgItemText, hWin, IDC_SEARCH_BAR, addr searchText, 128 ;获取搜索内容
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_RESETCONTENT, 0, 0 ;清空搜索结果
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_SETHORIZONTALEXTENT, 500, 0 ;设置水平滚动条
+	
+	mov ecx, numCurrentGroupSongs
+	mov esi, offset currentGroupSongs
+	mov edi, offset searchResult
+	mov index, 0
+
+L1:	push ecx
+    push esi
+	invoke GetFileTitle, addr (song ptr [esi]).path, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
+	invoke StrStr, addr readSongNameStr, addr searchText
+	.if eax != 0
+		invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_ADDSTRING, 0, addr readSongNameStr
+		mov ebx, index
+		mov [edi], ebx
+		add edi, TYPE searchResult
+	.endif
+	pop esi
+	pop ecx
+	add esi, TYPE currentGroupSongs
+	add index, 1
+	LOOP L1
+
+	ret
+LocalSearch endp
+
+NetSearch proc,
+	hWin : dword
+
+	ret
+NetSearch endp
+
+GetLocalSearchSelectSong proc, 
+	hWin : dword
+	
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_GETCURSEL, 0, 0 ; 获取当前选中的歌曲
+	.if eax == LB_ERR ; 如果没有选中，那么返回
+		mov currentSelectSingleSongIndex, DEFAULT_PLAY_SONG
+		ret
+	.endif
+
+	mov ebx, TYPE dword
+	mul ebx
+	mov esi, offset searchResult
+	add esi, eax
+	mov eax, [esi]
+	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_SETCURSEL, eax, 0
+	invoke SelectPlaySong, hWin
+	invoke PlayMusic, hWin
+	ret
+GetLocalSearchSelectSong endp
 END WinMain
