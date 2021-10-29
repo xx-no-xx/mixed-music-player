@@ -2421,6 +2421,8 @@ REPEAT_RAW:
 		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_ADDSTRING, 0, addr readGroupNameStr ; 加入新的名字
 		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_SETCURSEL, counter, 0 ; 设置新的group焦点
 		invoke WriteFile, handler, addr readGroupNameStr, MAX_GROUP_NAME_LEN, addr BytesRead, NULL ; 写组别信息
+		invoke SendDlgItemMessage, hMainDialog, IDC_GROUPS, CB_GETLBTEXT, counter, addr currentGroupName
+		invoke SendDlgItemMessage, hMainDialog, IDC_LIST_NAME, WM_SETTEXT, 0, addr currentGroupName
 	.endif
 	add counter, 1
 	jmp REPEAT_RAW
