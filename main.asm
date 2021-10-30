@@ -13,6 +13,7 @@ include winmm.inc
 include gdi32.inc
 include shlwapi.inc
 include wininet.inc
+include msvcrt.inc
 
 includelib masm32.lib
 includelib user32.lib
@@ -22,6 +23,7 @@ includelib Winmm.lib
 includelib gdi32.lib
 includelib Shlwapi.lib
 includelib Wininet.lib
+includelib msvcrt.lib
 
 .const
 
@@ -170,8 +172,6 @@ LYRIC_NOT_EXIST				equ 1 ; 歌词不存在
 LOCAL_SEARCH				equ 0 ; 本地搜索
 NET_SEARCH					equ 1 ; 网络搜索
 
-_PROCVAR3 typedef proto :dword, :dword, :dword
-PROCVAR3  typedef ptr _PROCVAR3
 ; +++++++++++++++++ function ++++++++++++++++
 
 SymMatchString proto, 
@@ -380,6 +380,8 @@ NetSearch proto, ; 网络搜索
 
 GetLocalSearchSelectSong proto, ; 找到搜索栏中选中歌曲
 	hWin : dword
+GetNetworkSearchSelectSong proto, ; 下载链接复制到剪切板
+	hWin : dword
 ; +++++++++++++++++++ data +++++++++++++++++++++
 .data
 
@@ -417,7 +419,7 @@ timeFormat BYTE "%02d:%02d", 0
 ;-------网络相关-------
 UserAgent BYTE "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36 Edg/95.0.1020.30", 0
 searchURL BYTE 'http://pd.musicapp.migu.cn/MIGUM3.0/v1.0/content/search_all.do?text=%s&pageNo=1&searchSwitch={"song":1}', 0
-downloadURL BYTE "http://app.pd.nf.migu.cn/MIGUM2.0/v1.0/content/sub/listenSong.do?toneFlag={formatType}&netType=00&userId=15548614588710179085069&ua=Android_migu&version=5.1&copyrightId=0&contentId=%s&resourceType={resourceType}&channel=0", 0
+downloadURL BYTE 'http://app.pd.nf.migu.cn/MIGUM2.0/v1.0/content/sub/listenSong.do?toneFlag=HQ&netType=00&userId=15548614588710179085069&version=5.1&copyrightId=0&contentId=%s&resourceType=2&channel=0', 0
 urlString BYTE 250 DUP(0)
 bufferChar BYTE 0
 bufferNet BYTE 819200 DUP(0)
@@ -515,12 +517,12 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 ;songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
 testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -731,6 +733,8 @@ DialogMain proc,
 			.if hiword == LBN_DBLCLK
 				.if searchPattern == LOCAL_SEARCH
 					invoke GetLocalSearchSelectSong, hWin
+				.else
+					invoke GetNetworkSearchSelectSong, hWin
 				.endif
 			.endif
 		.elseif loword == IDC_DELETE_CURRENT_SONG
@@ -2648,11 +2652,13 @@ FindSongInfo proc,
 	LOCAL cntM : dword ; 中括号个数
 	LOCAL cntQ : dword ; 引号对数
 	LOCAL num : dword
+	LOCAL pos : dword
 	mov num, 0
 	mov cntL, 0
 	mov cntM, 0
 	mov esi, offset bufferNet
 	mov ebx, offset netSongList
+	mov pos, ebx
 	.repeat
 		mov bl, [esi]
 		.if bl == "{"
@@ -2673,7 +2679,7 @@ FindSongInfo proc,
 				.if cntQ == 11
 					mov edi, esi
 					add edi, 1
-					mov edx, ebx
+					mov edx, pos
 					add edx, 50
 					mov ecx, 18
 					.repeat
@@ -2687,7 +2693,7 @@ FindSongInfo proc,
 				.elseif cntQ == 19
 					mov edi, esi
 					add edi, 1
-					mov edx, ebx
+					mov edx, pos
 					.repeat
 						mov al, [edi]
 						mov [edx], al
@@ -2695,9 +2701,9 @@ FindSongInfo proc,
 						inc edx
 					.until (byte ptr [edi]) == '"'
 					mov (byte ptr [edx]), 0
-					invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_ADDSTRING, 0, ebx
+					invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_ADDSTRING, 0, pos
 
-					add ebx, TYPE netsong
+					add pos, 69
 				.endif
 			.endif
 		.endif
@@ -2756,7 +2762,6 @@ GetLocalSearchSelectSong proc,
 	
 	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_GETCURSEL, 0, 0 ; 获取当前选中的歌曲
 	.if eax == LB_ERR ; 如果没有选中，那么返回
-		mov currentSelectSingleSongIndex, DEFAULT_PLAY_SONG
 		ret
 	.endif
 
@@ -2770,4 +2775,38 @@ GetLocalSearchSelectSong proc,
 	invoke PlayMusic, hWin
 	ret
 GetLocalSearchSelectSong endp
+
+GetNetworkSearchSelectSong proc, 
+	hWin : dword
+	LOCAL hData : dword
+	LOCAL pData : dword
+	LOCAL index : dword
+	LOCAL temp : dword
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_GETCURSEL, 0, 0 ; 获取当前选中的歌曲
+	.if eax == LB_ERR ; 如果没有选中，那么返回
+		ret
+	.endif
+
+	mov ebx, 69
+	mul ebx
+	mov esi, offset netSongList
+	add esi, eax
+	add esi, 50
+	mov temp, esi
+	invoke wsprintf, addr urlString, addr downloadURL, esi
+	invoke OpenClipboard, hWin
+	.if eax
+		invoke EmptyClipboard
+		invoke GlobalAlloc, GMEM_MOVEABLE, 250;
+		mov hData, eax
+		invoke GlobalLock, hData;
+		mov pData, eax
+		invoke crt_memcpy, pData, addr urlString, 250;
+		invoke GlobalUnlock, hData ;
+		invoke SetClipboardData, CF_TEXT, hData
+		invoke CloseClipboard
+	.endif
+	ret
+GetNetworkSearchSelectSong endp
+
 END WinMain
