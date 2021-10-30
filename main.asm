@@ -12,6 +12,7 @@ include comdlg32.inc ; 文件操作
 include winmm.inc
 include gdi32.inc
 include shlwapi.inc
+include wininet.inc
 
 includelib masm32.lib
 includelib user32.lib
@@ -20,6 +21,7 @@ includelib comdlg32.lib
 includelib Winmm.lib
 includelib gdi32.lib
 includelib Shlwapi.lib
+includelib Wininet.lib
 
 .const
 
@@ -164,7 +166,15 @@ LYRIC_NOT_EXIST				equ 1 ; 歌词不存在
 
 LOCAL_SEARCH				equ 0 ; 本地搜索
 NET_SEARCH					equ 1 ; 网络搜索
+
+_PROCVAR3 typedef proto :dword, :dword, :dword
+PROCVAR3  typedef ptr _PROCVAR3
 ; +++++++++++++++++ function ++++++++++++++++
+
+SymMatchString proto, 
+	string : dword, 
+	expression : dword, 
+	fCase : dword
 DialogMain proto, ; 对话框主逻辑
 	hWin : dword,
 	uMsg : dword,
@@ -196,6 +206,11 @@ songgroup struct ; 歌单信息结构体
 	groupid dword DEFAULT_SONG_GROUP
 	groupname byte MAX_GROUP_NAME_LEN dup(0)
 songgroup ends
+
+netsong struct ; 网络搜索歌曲结构体
+	name byte 50 DUP(0)
+	contentId byte 19 DUP(0)
+netsong ends
 
 CollectSongPath proto, ; 将songPath复制到对应的targetPath中去
 	songPath : dword,
@@ -395,6 +410,18 @@ curLen BYTE 32 DUP(0)
 intFormat BYTE "%d", 0
 timeFormat BYTE "%02d:%02d", 0
 ;----------------------
+
+;-------网络相关-------
+UserAgent BYTE "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36 Edg/95.0.1020.30", 0
+searchURL BYTE 'http://pd.musicapp.migu.cn/MIGUM3.0/v1.0/content/search_all.do?text=%s&pageNo=1&searchSwitch={"song":1}', 0
+downloadURL BYTE "http://app.pd.nf.migu.cn/MIGUM2.0/v1.0/content/sub/listenSong.do?toneFlag={formatType}&netType=00&userId=15548614588710179085069&ua=Android_migu&version=5.1&copyrightId=0&contentId=%s&resourceType={resourceType}&channel=0", 0
+urlString BYTE 250 DUP(0)
+bufferChar BYTE 0
+bufferNet BYTE 819200 DUP(0)
+fileName BYTE "search.txt", 0
+contentId BYTE "contentId", 0
+netSongList netsong 30 dup(<>)
+;---------------------
 
 modePlay byte MODE_LOOP
 
@@ -627,6 +654,7 @@ DialogMain proc,
 		invoke RegisterHotKey, hWin, 5, MOD_SHIFT, VK_DOWN
 		invoke RegisterHotKey, hWin, 6, MOD_SHIFT, 0BCh	; 逗号
 		invoke RegisterHotKey, hWin, 7, MOD_SHIFT, 0BEh	; 句号
+
 		; do something
 	.elseif uMsg == WM_HOTKEY
 		; do something
@@ -2561,8 +2589,111 @@ L1:	push ecx
 	ret
 LocalSearch endp
 
+FindSongInfo proc,
+	hWin : dword
+	LOCAL cntL : dword ; 大括号个数
+	LOCAL cntM : dword ; 中括号个数
+	LOCAL cntQ : dword ; 引号对数
+	LOCAL num : dword
+	mov num, 0
+	mov cntL, 0
+	mov cntM, 0
+	mov esi, offset bufferNet
+	mov ebx, offset netSongList
+	.repeat
+		mov bl, [esi]
+		.if bl == "{"
+			inc cntL
+			.if cntL == 3 && cntM == 1
+				mov cntQ, 0
+			.endif
+		.elseif bl == "}"
+			dec cntL
+		.elseif bl == "["
+			inc cntM
+		.elseif bl == "]"
+			dec cntM
+		.endif 
+		.if cntL == 3 && cntM == 1
+			.if (byte ptr [esi]) == '"'
+				inc cntQ
+				.if cntQ == 11
+					mov edi, esi
+					add edi, 1
+					mov edx, ebx
+					add edx, 50
+					mov ecx, 18
+					.repeat
+						mov al, [edi]
+						mov [edx], al
+						inc edi
+						inc edx
+						dec ecx
+					.until ecx == 0
+
+				.elseif cntQ == 19
+					mov edi, esi
+					add edi, 1
+					mov edx, ebx
+					.repeat
+						mov al, [edi]
+						mov [edx], al
+						inc edi
+						inc edx
+					.until (byte ptr [edi]) == '"'
+					mov (byte ptr [edx]), 0
+					invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_ADDSTRING, 0, ebx
+
+					add ebx, TYPE netsong
+				.endif
+			.endif
+		.endif
+		inc esi
+	.until (byte ptr [esi]) == 0
+	ret
+FindSongInfo endp
+
 NetSearch proc,
 	hWin : dword
+	LOCAL hNet : dword
+	LOCAL hUrlFile : dword
+	LOCAL dwBytesRead : dword
+	LOCAL bRead : dword
+
+	invoke GetDlgItemText, hWin, IDC_SEARCH_BAR, addr searchText, 128 ;获取搜索内容
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_RESETCONTENT, 0, 0 ;清空搜索结果
+	invoke SendDlgItemMessage, hWin, IDC_SEARCH_LIST, LB_SETHORIZONTALEXTENT, 500, 0 ;设置水平滚动条
+	invoke wsprintf, addr urlString, addr searchURL, addr searchText
+	invoke InternetOpen, addr UserAgent, 
+						 PRE_CONFIG_INTERNET_ACCESS,
+                         NULL, 
+                         INTERNET_INVALID_PORT_NUMBER,
+                         0
+	mov hNet, eax
+	invoke InternetOpenUrl, hNet,
+                            addr urlString,
+                            NULL,
+                            0,
+                            INTERNET_FLAG_RELOAD,
+                            0
+	mov hUrlFile, eax
+	mov esi, offset bufferNet
+	.repeat
+		mov dwBytesRead, 0
+		invoke InternetReadFile, hUrlFile,
+								 addr bufferChar,
+								 1,
+								 addr dwBytesRead
+		mov bRead, eax
+		mov bl, bufferChar
+		mov [esi], bl
+		inc esi
+	.until bRead == 1 && dwBytesRead == 0
+
+    invoke InternetCloseHandle, hUrlFile ;
+	invoke InternetCloseHandle, hNet ;
+
+	invoke FindSongInfo, hWin
 
 	ret
 NetSearch endp
