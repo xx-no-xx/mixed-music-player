@@ -515,12 +515,12 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
-;songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+;songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
+songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
 testint byte "TEST INT: %d", 0ah, 0dh, 0
-;groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
-groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+;groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -653,19 +653,22 @@ DialogMain proc,
 		invoke SendDlgItemMessage, hWin, IDC_PLAY_TIME_TEXT, WM_SETTEXT, 0, ADDR mciCommand
 		
 		;注册热键
-		invoke RegisterHotKey, hWin, 1, MOD_SHIFT, VK_F8
-		invoke RegisterHotKey, hWin, 2, MOD_SHIFT, VK_RIGHT
-		invoke RegisterHotKey, hWin, 3, MOD_SHIFT, VK_LEFT
-		invoke RegisterHotKey, hWin, 4, MOD_SHIFT, VK_UP
-		invoke RegisterHotKey, hWin, 5, MOD_SHIFT, VK_DOWN
-		invoke RegisterHotKey, hWin, 6, MOD_SHIFT, 0BCh	; 逗号
-		invoke RegisterHotKey, hWin, 7, MOD_SHIFT, 0BEh	; 句号
-
+		invoke RegisterHotKey, hWin, 1, MOD_ALT, VK_F8
+		invoke RegisterHotKey, hWin, 2, MOD_ALT, VK_RIGHT
+		invoke RegisterHotKey, hWin, 3, MOD_ALT, VK_LEFT
+		invoke RegisterHotKey, hWin, 4, MOD_ALT, VK_UP
+		invoke RegisterHotKey, hWin, 5, MOD_ALT, VK_DOWN
+		invoke RegisterHotKey, hWin, 6, MOD_ALT, VK_B	; 逗号
+		invoke RegisterHotKey, hWin, 7, MOD_ALT, VK_N	; 句号
+		invoke RegisterHotKey, hWin, 8, MOD_ALT, VK_C	; 换肤
+		invoke RegisterHotKey, hWin, 9, MOD_ALT, VK_M	; 切换播放模式
+		invoke RegisterHotKey, hWin, 10, MOD_ALT, VK_S	; 静音
+		invoke RegisterHotKey, hWin, 11, MOD_ALT, VK_SPACE	; 播放、暂停
 		; do something
 	.elseif uMsg == WM_HOTKEY
 		; do something
 		; mov eax, eax
-		.if lloword == MOD_SHIFT
+		.if lloword == MOD_ALT
 			.if lhiword == VK_F8
 				invoke EndDialog, hWin, 0
 			.elseif lhiword == VK_RIGHT
@@ -686,10 +689,32 @@ DialogMain proc,
 				.endif
 				invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, TRUE, eax
 				invoke AlterVolume, hWin
-			.elseif lhiword == 0BCh
+			.elseif lhiword == VK_B
 				invoke PlayPreviousSong, hWin
-			.elseif lhiword == 0BEh
+			.elseif lhiword == VK_N
 				invoke PlayNextSong, hWin
+			.elseif lhiword == VK_C
+				invoke ChangeTheme, hWin
+			.elseif lhiword == VK_M
+				invoke ChangeMode, hWin
+			.elseif lhiword == VK_S
+				xor isMuted, 1
+				.if isMuted == 1
+					.if curTheme == 0
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
+					.else
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Orange
+					.endif
+				.else
+					.if curTheme == 0
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Blue
+					.else
+						invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Volum_Orange
+					.endif
+				.endif
+				invoke AlterVolume, hWin
+			.elseif lhiword == VK_SPACE
+				invoke PlayMusic, hWin
 			.else
 			.endif
 		.else
@@ -1852,7 +1877,11 @@ StopCurrentSong proc,
 	invoke SendDlgItemMessage, hWin, IDC_LYRICS, WM_SETTEXT, 0, NULL
 
 	;初始化图标
-	invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+	.if curTheme == 0
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+	.else
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Orange
+	.endif
 
 	ret
 StopCurrentSong endp
@@ -1926,13 +1955,25 @@ PlayMusic proc,
 	.endif
 
 	.if playState == STATE_STOP ; 当前为停止状态
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+		.else 
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
+		.endif
 		invoke PlayCurrentSong, hWin
 	.elseif playState == STATE_PLAY ; 当前为播放态
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Play_Orange
+		.endif
 		invoke PauseCurrentSong
 	.elseif playState == STATE_PAUSE ; 当前为暂停态
-		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
+		.endif
 		invoke ResumeCurrentSong
 	.endif
 	ret 
