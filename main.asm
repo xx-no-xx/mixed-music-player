@@ -428,6 +428,8 @@ contentId BYTE "contentId", 0
 netSongList netsong 30 dup(<>)
 ;---------------------
 
+currentFileDir byte MAX_FILE_LEN dup(0)
+
 modePlay byte MODE_LOOP
 
 handler HANDLE ? ; 文件句柄
@@ -496,9 +498,9 @@ hNewGroup dword ?
 hChangeName dword ?
 
 ; +++++++++++++++配置信息+++++++++++(因为测试而注释)
-;songData BYTE ".\data.txt", 0
-;ofnInitialDir BYTE "C:", 0 ; default open C
-;groupData byte ".\groupdata.txt", 0
+songData byte "data.txt", 0
+ofnInitialDir BYTE "C:", 0 ; default open C
+groupData byte "groupdata.txt", 0
 
 ; +++++++++++++函数辅助变量++++++++++++（可能可以被local替代）
 
@@ -508,21 +510,9 @@ readFilePathStr byte MAX_FILE_LEN  dup(0)
 readSongNameStr byte MAX_SONG_NAME_LEN dup(0)
 buffer byte 0,0
 readGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
-inputGroupNameStr byte MAX_GROUP_NAME_LEN dup("1")
+inputGroupNameStr byte MAX_GROUP_NAME_LEN dup(0)
 currentGroupName byte MAX_GROUP_NAME_LEN dup(0)
 readTime byte 10 dup(0)
-; to change "1" -> 0
-
-; ++++++++++++++测试专用+++++++++++++ 
-; ++++++++请根据自己的机器路径修改+++++++++
-; TODO-TODO-TODO-TODO-TODO-TODO-TODO
-simpleText byte "somethingrighthere", 0ah, 0
-;songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
-ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
-testint byte "TEST INT: %d", 0ah, 0dh, 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
-;groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -583,7 +573,8 @@ keyRightDown	dword	0	; 右键是否被按下
 .code
 
 WinMain PROC
-	INVOKE GetModuleHandle, NULL
+	invoke GetCurrentDirectory, MAX_FILE_LEN - 1, addr currentFileDir
+	invoke GetModuleHandle, NULL
 	mov hInstance, eax
 	;invoke PreTranslateMessage, hInstance
 	invoke DialogBoxParam, hInstance, IDD_DIALOG, 0, addr DialogMain, 0
@@ -929,7 +920,8 @@ AddSingleSongOFN proc,
 
 	invoke GetGroupDetailInStr, songGroup ; 获取dword songGroup的用于写入文件的str模式
 
-    INVOKE  CreateFile,offset songData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开文件
+	invoke SetCurrentDirectory, addr currentFileDir
+    invoke  CreateFile,offset songData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开文件
 	mov		handler, eax
 	mov		handler_saved, eax
 
@@ -971,6 +963,7 @@ GetTargetGroupSong proc,
 
 	LOCAL counter : dword
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开歌单歌曲文件
 	mov		handler, eax
 
@@ -1075,6 +1068,7 @@ SelectGroup proc,
 	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETLBTEXT, indexToSet, addr currentGroupName
 	invoke SendDlgItemMessage, hWin, IDC_LIST_NAME, WM_SETTEXT, 0, addr currentGroupName
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt读取group相关的信息
 	mov		handler, eax
 
@@ -1114,6 +1108,7 @@ AddNewGroup proc,
 	local handler_saved : dword ; ---
 	local BytesWritten : dword ; 用于写的指针
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt获取组别信息
 	mov		handler, eax
 	mov		handler_saved, eax
@@ -1150,6 +1145,7 @@ GetAllGroups proc,
 
 	local BytesRead : dword ; 读入的指针
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupData.txt获取组别信息
 	mov		handler, eax
 
@@ -1228,6 +1224,7 @@ DeleteCurrentGroup proc, ; 删除当前选择的歌单
 	; 调用DeleteTargetSong, 指定method，删除在当前组别内的所有歌曲。
 	; 调用后，所有属于该组的歌曲在data.txt中被删除。
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开文件
 	mov		handler, eax ; 保存handler
 	mov		esi, offset delAllGroups ; 设置esi从delAllGroups开始写
@@ -1255,6 +1252,7 @@ END_READ:
 	mov		esi, offset delAllGroups ;重新设置esi的指针在delAllGroups的开头
 
 	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_RESETCONTENT, 0, 0 ; 重置组别选择下拉框的内容
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt文件
 	; 这里选择create_always打开模式，可以覆盖之前陈旧的groupdata信息
 	mov		handler, eax
@@ -1394,6 +1392,7 @@ DeleteTargetSong proc,
 	invoke GetAllSongInData ; 获取所有data.txt中的歌曲信息，存储在delAllSongs之中
 	mov		counter, eax
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset songData,GENERIC_WRITE, 0, 0,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 读取所有的歌曲
 	mov		handler, eax
 	mov		esi, offset delAllSongs
@@ -1471,6 +1470,7 @@ GetAllSongInData proc ; 获取所有的data.txt中的歌曲
 
 	local BytesRead : dword ; 读用的指针
 	local counter : dword ; 计数器
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset songData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开data.txt文件获取所有歌曲的信息
 	mov		handler, eax
 	mov		esi, offset delAllSongs ; 设置delAllSongs的偏移量esi
@@ -2609,6 +2609,7 @@ ChangeGroupName proc, ; 修改歌单名称
 	mov flag, GENERIC_WRITE
 	or flag, GENERIC_READ
 
+	invoke SetCurrentDirectory, addr currentFileDir
     invoke  CreateFile,offset groupData, flag, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt获取组别信息
 	mov		handler, eax
 
