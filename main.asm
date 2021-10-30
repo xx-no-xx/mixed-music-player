@@ -2419,9 +2419,9 @@ FIND_MILLISECOND:
 	mov scounter, 0
 	mov counter, 0
 READ_STR:
-	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0 
-	sub scounter, 1
-	add counter, 1
+	invoke ReadFile, handler, addr buffer, 1, addr BytesRead, 0  ; 读歌词内容
+	sub scounter, 1 ; 负数counter
+	add counter, 1 ; 正数counter
 	.if BytesRead == 0
 		invoke SetFilePointer, handler, scounter, 0, FILE_CURRENT
 		invoke ReadFile, handler, strPos, counter, addr BytesRead, 0
@@ -2433,8 +2433,8 @@ READ_STR:
 	.endif
 
 	invoke RtlZeroMemory, strPos, MAX_SINGLE_LYRIC_LEN
-	invoke SetFilePointer, handler, scounter, 0, FILE_CURRENT
-	invoke ReadFile, handler, strPos, counter, addr BytesRead, 0
+	invoke SetFilePointer, handler, scounter, 0, FILE_CURRENT ; 文件指针前移动
+	invoke ReadFile, handler, strPos, counter, addr BytesRead, 0 ; 读字符串到对应位置
 
 	mov esi, lyricSavePos
 	add esi, size lyric
@@ -2462,29 +2462,25 @@ GetLyricPath proc
 	.endif
 
 	invoke CollectSongPath, addr currentPlaySingleSongPath, addr currentPlayLyricPath
-	mov	ecx, offset currentPlayLyricPath
-	mov pointPos, ecx
-
-
+	mov	ecx, offset currentPlayLyricPath ; 获取要存储的文件指针
+	mov pointPos, ecx ; 
 
 REPEAT_READ:
 	mov al, [ecx]
-	.if al == '.'
+	.if al == '.' ; 匹配.xxx的.
 		mov pointPos, ecx
 	.endif
-	.if eax != 0
-		add ecx, size byte
+	.if eax != 0 ; 如果没有读到路径结尾
+		add ecx, size byte ; 读下一个字符串
 		jmp REPEAT_READ
 	.endif
 
 	mov	esi, offset lyricSuffix
 	mov	edi, pointPos
 	add edi, size byte
-;	mov edi, offset currentPlayLyricPath
-	mov ecx, 4
+	mov ecx, 4 ; 复制4位"lrc", 0到对应位置
 	cld
 	rep movsb
-
 
 	invoke CheckFileExist, addr currentPlayLyricPath
 	.if eax == FILE_NOT_EXIST
