@@ -488,12 +488,12 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
+songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
 ;songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
 testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
-groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
+groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -646,14 +646,14 @@ DialogMain proc,
 				invoke FastBackward, hWin
 			.elseif lhiword == VK_UP
 				invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_GETPOS, 0, 0
-				.if eax < 900
+				.if eax <= 990
 					add eax, 10
 				.endif
 				invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, TRUE, eax
 				invoke AlterVolume, hWin
 			.elseif lhiword == VK_DOWN
 				invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_GETPOS, 0, 0
-				.if eax > 10
+				.if eax >= 10
 					sub eax, 10
 				.endif
 				invoke SendDlgItemMessage, hWin, IDC_SOUND, TBM_SETPOS, TRUE, eax
