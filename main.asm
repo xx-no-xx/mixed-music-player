@@ -488,12 +488,12 @@ readTime byte 10 dup(0)
 ; ++++++++请根据自己的机器路径修改+++++++++
 ; TODO-TODO-TODO-TODO-TODO-TODO-TODO
 simpleText byte "somethingrighthere", 0ah, 0
-songData BYTE "C:\Users\43722\Desktop\data.txt", 0 
+songData BYTE "C:\Users\gassq\Desktop\data.txt", 0 
 ;songData BYTE "C:\Users\dell\Desktop\data\data.txt", 0 
 ofnInitialDir BYTE "D:\music", 0 ; default open C only for test
 testint byte "TEST INT: %d", 0ah, 0dh, 0
 ;groupData byte "C:\Users\dell\Desktop\data\groupdata.txt", 0
-groupData byte "C:\Users\43722\Desktop\groupdata.txt", 0
+groupData byte "C:\Users\gassq\Desktop\groupdata.txt", 0
 
 ; 图像资源数据
 bmp_Theme_Blue			dword	?	; 蓝色主题背景
@@ -1009,15 +1009,14 @@ SelectGroup proc,
 	local counter : dword ; 计数器
 
 	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETCURSEL, 0, 0 
-	mov	indexToSet, eax ; 获取当前被选中的group index
-	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETLBTEXT, indexToSet, addr currentGroupName
-	invoke SendDlgItemMessage, hWin, IDC_LIST_NAME, WM_SETTEXT, 0, addr currentGroupName
-
 	.if eax == CB_ERR ; 如果没有选中group
 		mov currentPlayGroup, DEFAULT_SONG_GROUP ; 那么设置现在没有选中歌单
 		invoke SelectSong, hWin ; 同时设置现在选择的歌曲
 		ret
 	.endif
+	mov	indexToSet, eax ; 获取当前被选中的group index
+	invoke SendDlgItemMessage, hWin, IDC_GROUPS, CB_GETLBTEXT, indexToSet, addr currentGroupName
+	invoke SendDlgItemMessage, hWin, IDC_LIST_NAME, WM_SETTEXT, 0, addr currentGroupName
 
     invoke  CreateFile,offset groupData,GENERIC_READ, 0, 0,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,0 ; 打开groupdata.txt读取group相关的信息
 	mov		handler, eax
