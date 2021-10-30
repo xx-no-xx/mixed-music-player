@@ -61,6 +61,9 @@
 #define IDI_CHANGE_ORANGE               183
 #define IDI_CROSS_BLUE                  184
 #define IDI_CROSS_ORANGE                185
+#define IDI_LOCAL_SEARCH                186
+#define IDI_MODIFY                      187
+#define IDI_NET_SEARCH                  188
 #define IDC_FILE_SYSTEM                 1001
 #define IDC_FILE_SYSTEM2                1002
 #define IDC_COMBO1                      1009
@@ -110,7 +113,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        186
+#define _APS_NEXT_RESOURCE_VALUE        189
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1076
 #define _APS_NEXT_SYMED_VALUE           101

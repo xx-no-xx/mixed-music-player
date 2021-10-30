@@ -110,6 +110,9 @@ IDI_CHANGE_BLUE                 equ	182
 IDI_CHANGE_ORANGE               equ	183
 IDI_CROSS_BLUE                  equ	184
 IDI_CROSS_ORANGE                equ	185
+IDI_LOCAL_SEARCH                equ	186
+IDI_MODIFY                      equ	187
+IDI_NET_SEARCH                  equ	188
 
 WINDOW_WIDTH					equ 1080 ; 窗口宽度
 WINDOW_HEIGHT					equ 675  ; 窗口高度
@@ -533,6 +536,9 @@ ico_Change_Blue			dword	?	; 蓝色更换主题
 ico_Change_Orange		dword	?	; 橙色更换主题
 ico_Cross_Blue			dword	?	; 蓝色关闭
 ico_Cross_Orange		dword	?	; 橙色关闭
+ico_Local_Search		dword	?	; 本地搜索
+ico_Net_Search			dword	?	; 网络搜索
+ico_Modify				dword	?	; 修改名称
 curTheme	word	1	; 当前主题编号
 ; 字体
 fontName			byte	"微软雅黑"
@@ -1513,6 +1519,9 @@ InitUI proc,
 	local @currentSongFont
 	local @numbersFont
 	local @lyricFont
+	
+	; 设置默认播放模式
+	mov modePlay, MODE_LOOP
 	; 设置static的字体字号
 	invoke CreateFont, -28, -14, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, 
 		DEFAULT_CHARSET, OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, 
@@ -1616,6 +1625,12 @@ InitUI proc,
 	mov ico_Remove_Song, eax
 	invoke LoadImage, hInstance, IDI_CLEAN_SONG, IMAGE_ICON, 120, 25, NULL
 	mov ico_Clean_Song, eax
+	invoke LoadImage, hInstance, IDI_LOCAL_SEARCH, IMAGE_ICON, 71, 16, NULL
+	mov ico_Local_Search, eax
+	invoke LoadImage, hInstance, IDI_NET_SEARCH, IMAGE_ICON, 71, 16, NULL
+	mov ico_Net_Search, eax
+	invoke LoadImage, hInstance, IDI_MODIFY, IMAGE_ICON, 20, 20, NULL
+	mov ico_Modify, eax
 
 	invoke LoadImage, hInstance, IDI_CHANGE_BLUE, IMAGE_ICON, 20, 20, NULL
 	mov ico_Change_Blue, eax
@@ -1633,6 +1648,9 @@ InitUI proc,
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_GROUP, BM_SETIMAGE, IMAGE_ICON, ico_Remove_List
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_INVALID_SONGS, BM_SETIMAGE, IMAGE_ICON, ico_Clean_Song
 	invoke SendDlgItemMessage, hWin, IDC_DELETE_CURRENT_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Remove_Song
+	invoke SendDlgItemMessage, hWin, IDC_LOCAL_SEARCH, BM_SETIMAGE, IMAGE_ICON, ico_Local_Search
+	invoke SendDlgItemMessage, hWin, IDC_NET_SEARCH, BM_SETIMAGE, IMAGE_ICON, ico_Net_Search
+	invoke SendDlgItemMessage, hWin, IDC_START_CHANGE_NAME, BM_SETIMAGE, IMAGE_ICON, ico_Modify
 	ret
 InitUI endp
 
@@ -1666,12 +1684,18 @@ ChangeTheme proc,
 		.else
 			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Blue
 		.endif
+		.if modePlay == MODE_LOOP
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
+		.elseif modePlay == MODE_RANDOM
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Random_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Single_Blue
+		.endif
 		invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Blue
 		invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Blue
 		invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Blue
 		invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Blue
 		invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Blue
-		invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
 		invoke SendDlgItemMessage, hWin, IDC_THEME, BM_SETIMAGE, IMAGE_ICON, ico_Change_Blue
 		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Blue
 		; 固定背景bitmap
@@ -1699,12 +1723,18 @@ ChangeTheme proc,
 		.else
 			invoke SendDlgItemMessage, hWin, IDC_MUTE_SONG, BM_SETIMAGE, IMAGE_ICON, ico_Mute_Orange
 		.endif
+		.if modePlay == MODE_LOOP
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Orange
+		.elseif modePlay == MODE_RANDOM
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Random_Orange
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Single_Orange
+		.endif
 		invoke SendDlgItemMessage, hWin, IDC_FILE_SYSTEM, BM_SETIMAGE, IMAGE_ICON, ico_Add_Song_Orange
 		invoke SendDlgItemMessage, hWin, IDC_NEXT_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Next_Orange
 		invoke SendDlgItemMessage, hWin, IDC_PRE_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Pre_Orange
 		invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Orange
 		invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Orange
-		invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Orange
 		invoke SendDlgItemMessage, hWin, IDC_THEME, BM_SETIMAGE, IMAGE_ICON, ico_Change_Orange
 		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Orange
 		; 固定背景bitmap
@@ -1718,6 +1748,7 @@ ChangeTheme proc,
 
 	; 获得并调整窗口位置
 	invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
+;	invoke SendMessage, hWin, WM_SIZE, SIZE_MINIMIZED, NULL
 	ret
 ChangeTheme endp
 
@@ -1993,6 +2024,12 @@ FastForward proc,
 		invoke mciExecute, addr mciCommand
 		invoke mciExecute, addr cmd_play
 	.endif	
+	mov playState, STATE_PLAY
+	.if curTheme == 0
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+	.else
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
+	.endif
 	ret
 FastForward endp
 
@@ -2025,6 +2062,12 @@ FastBackward proc,
 		invoke wsprintf, addr mciCommand, addr cmd_setPos, currentPlaySingleSongPos
 		invoke mciExecute, addr mciCommand
 		invoke mciExecute, addr cmd_play
+	.endif
+	mov playState, STATE_PLAY
+	.if curTheme == 0
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
+	.else
+		invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Orange
 	.endif
 	ret
 FastBackward endp
@@ -2138,12 +2181,27 @@ ChangeMode proc,
 	.if modePlay == MODE_ONE
 		mov modePlay, MODE_RANDOM
 		; icon
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Random_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Random_Orange
+		.endif
 	.elseif modePlay == MODE_RANDOM
 		mov modePlay, MODE_LOOP
 		; icon
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Loop_Orange
+		.endif
 	.elseif modePlay == MODE_LOOP
 		mov modePlay, MODE_ONE
 		; icon
+		.if curTheme == 0
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Single_Blue
+		.else
+			invoke SendDlgItemMessage, hWin, IDC_CHANGE_MODE, BM_SETIMAGE, IMAGE_ICON, ico_Single_Orange
+		.endif
 	.endif
 
 	ret
