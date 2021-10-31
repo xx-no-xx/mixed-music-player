@@ -124,8 +124,8 @@ PLAY_WIDTH						equ 40	 ; ²¥·Å¼ü¿í¶È
 NEXT_WIDTH						equ 30	 ; ÏÂÒ»Ê×¼ü¿í¶È
 ;---------------- process --------------------
 DO_NOTHING			equ 0 ; ÌØ¶¨µÄ·µ»ØÖµ±êÊ¶
-DEFAULT_SONG_GROUP  equ 99824 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ ; todo : change 99824 to 0
-DEFAULT_PLAY_SONG   equ 21474 ; Ä¬ÈÏµÄµÚindexÊ×¸è ; todo : change 21474 to a larger num
+DEFAULT_SONG_GROUP  equ 9999999 ; Ä¬ÈÏ×é±ð±»·ÖÅäµ½µÄ±àºÅ ; 
+DEFAULT_PLAY_SONG   equ 8888888 ; Ä¬ÈÏµÄµÚindexÊ×¸è ;
 DEFAULT_PLAY_LYRIC  equ 0 ; Ä¬ÈÏµÄµÚindex¾ä¸è´Ê
 
 FILE_DO_EXIST		equ 0 ; ÎÄ¼þ´æÔÚ
@@ -151,7 +151,7 @@ MAX_GROUP_DETAIL_LEN equ 32 ; ×é±ð±àºÅµÄ×î³¤³¤¶È
 MAX_GROUP_NAME_LEN equ 20 ; ¸èµ¥Ãû³ÆµÄ×î³¤³¤¶È
 MAX_GROUP_SONG equ 30 ; ¸èµ¥ÄÚ¸èÇúµÄ×î´óÊý
 MAX_GROUP_NUM equ 10 ; ×î´óµÄ¸èµ¥ÊýÁ¿
-MAX_SONG_NAME_LEN equ 150; ×î´ó¸èÇúµÄÃû×ÖµÄ³¤¶È ;todotodotodo
+MAX_SONG_NAME_LEN equ 150; ×î´ó¸èÇúµÄÃû×ÖµÄ³¤¶È 
 
 MAX_SINGLE_LYRIC_LEN equ 100; Ã¿¾ä¸è´ÊµÄ×Ö·û´®µÄ×î´ó³¤¶È
 MAX_LYRIC_NUM equ 300; ¸è´ÊµÄÊýÁ¿
@@ -202,7 +202,6 @@ GetTargetGroupSong proto, ; ¶ÁÈ¡¸èÇú£º·ÖÎª1. SAVE_T_MAIN_DIALOG_GROUP £¬½«ÊôÓÚso
 song struct ; ¸èÇúÐÅÏ¢½á¹¹Ìå
 	path byte MAX_FILE_LEN dup(0)
 	groupid dword DEFAULT_SONG_GROUP ; ¸èÇúËùÊôµÄgroupid
-; TODO : ÆäËû¸èÇúÐÅÏ¢
 song ends
 
 songgroup struct ; ¸èµ¥ÐÅÏ¢½á¹¹Ìå
@@ -274,17 +273,11 @@ CheckFileExist proto, ; ¶ÁÈ¡Ò»¸ö×Ö·û´®targetPath(pointer)£¬ÅÐ¶Ï¶ÔÓ¦µÄÎÄ¼þÊÇ·ñ´æÔ
 DeleteInvalidSongs proto,
 	hWin : dword
 	
-
 ChangeTheme proto,	; ¸ü»»Æ¤·ô
 	hWin : dword
 
 ; Êó±ê×ó¼üÊÂ¼þ
 LButtonDown proto, 
-	hWin : dword, 
-	wParam : dword, 
-	lParam : dword
-
-KeyDown proto, 
 	hWin : dword, 
 	wParam : dword, 
 	lParam : dword
@@ -326,9 +319,6 @@ CheckPlayCurrentSong proto, ; ÊÔÍ¼²¥·Åµ±Ç°µÄ¸èÇúcurrentPlaySingleSongPath
 	hWin : dword
 ; eax = 0 ´ú±í²»ÄÜ¹»²¥·Å£¨1.Ã»Ñ¡ÖÐ¸èÇú£¬2.¸èÇú²»´æÔÚ£©
 ; eax = 1 ´ú±íµ±Ç°Ñ¡ÖÐÁË¸èÇúÇÒ¸èÇú´æÔÚ
-
-Paint proto, 
-	hWin :dword
 
 PlayNextSong proto, ; ²¥·ÅÏÂÒ»Ê×¡£Èç¹ûµ±Ç°Ã»ÓÐÑ¡ÖÐ¸èÇú£¬ÄÇÃ´µ¯³ömessage box
 	hWin : dword
@@ -380,6 +370,7 @@ NetSearch proto, ; ÍøÂçËÑË÷
 
 GetLocalSearchSelectSong proto, ; ÕÒµ½ËÑË÷À¸ÖÐÑ¡ÖÐ¸èÇú
 	hWin : dword
+
 GetNetworkSearchSelectSong proto, ; ÏÂÔØÁ´½Ó¸´ÖÆµ½¼ôÇÐ°å
 	hWin : dword
 ; +++++++++++++++++++ data +++++++++++++++++++++
@@ -490,6 +481,7 @@ playPreNxtNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èÇú£¬²»ÄÜ²¥·ÅÉÏÒ»Ê×/ÏÂÒ»Ê×", 0
 nameNone byte "ÔÝÎÞ¸èÇú", 0
 lyricNone byte "µ±Ç°¸èÇúÃ»ÓÐ¸è´ÊÎÄ¼þ", 0
 changeNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èµ¥£¬²»ÄÜÐÞ¸Ä¸èµ¥Ãû³Æ¡£", 0
+findNone byte "ÄúÃ»ÓÐÑ¡ÖÐ¸èµ¥£¬²»ÄÜ½øÐÐ±¾µØËÑË÷", 0
 
 ; +++++++++++++++³ÌÐòËùÐè²¿·Ö´°¿Ú±äÁ¿+++++++++++++++
 hInstance dword ?
@@ -657,10 +649,7 @@ DialogMain proc,
 		invoke RegisterHotKey, hWin, 9, MOD_ALT, VK_M	; ÇÐ»»²¥·ÅÄ£Ê½
 		invoke RegisterHotKey, hWin, 10, MOD_ALT, VK_S	; ¾²Òô
 		invoke RegisterHotKey, hWin, 11, MOD_ALT, VK_SPACE	; ²¥·Å¡¢ÔÝÍ£
-		; do something
 	.elseif uMsg == WM_HOTKEY
-		; do something
-		; mov eax, eax
 		.if lloword == MOD_ALT
 			.if lhiword == VK_F8
 				invoke EndDialog, hWin, 0
@@ -712,16 +701,13 @@ DialogMain proc,
 			.endif
 		.else
 		.endif
-	.elseif uMsg == WM_KEYDOWN
-		; DEBUG: °´ÏÂ¿Õ¸ñºó±»°´Å¥½Ø»ñ
-		invoke KeyDown, hWin, wParam, lParam
 	.elseif	uMsg == WM_COMMAND
 		.if loword == IDC_FILE_SYSTEM
 			invoke ImportSingleFile, hWin
 			invoke ShowMainDialogView, hWin
 		.elseif loword == IDC_GROUPS
 			.if hiword == CBN_SELCHANGE
-				invoke SelectGroup, hWin ; TODO
+				invoke SelectGroup, hWin 
 				invoke ShowMainDialogView, hWin
 			.endif
 		.elseif loword == IDC_ADD_NEW_GROUP
@@ -837,8 +823,6 @@ DialogMain proc,
 				mov searchPattern, NET_SEARCH
 				invoke NetSearch, hWin
 			.endif
-		.else
-			; do something
 		.endif
 	.elseif uMsg == WM_LBUTTONDOWN	; ×ó¼ü°´ÏÂ
 		invoke LButtonDown, hWin, wParam, lParam
@@ -867,8 +851,6 @@ DialogMain proc,
 		.endif
 	.elseif uMsg == WM_TIMER ;Ê±ÖÓÐÅºÅ
 		invoke GetPlayPosition, hWin ;»ñÈ¡²¥·ÅÎ»ÖÃ
-	.else
-		; do sth
 	.endif
 	xor eax, eax ; eax = 0
 	ret
@@ -899,7 +881,7 @@ ImportSingleFile proc,
 
 	invoke GetOpenFileName, addr ofn ; µ÷ÓÃ´ò¿ªÎÄ¼þµÄÏµÍ³¶Ô»°¿ò
 
-	.if eax == DO_NOTHING ;  todo: Èç¹ûÃ»´ò¿ª, Ö±½Óret
+	.if eax == DO_NOTHING ; 
 		jmp EXIT_IMPORT
 	.endif
 
@@ -957,8 +939,8 @@ GetTargetGroupSong proc,
 	saveTo : dword ; ¶ÔÓ¦×ÅÄÄÒ»ÖÖ»ñÈ¡Ä£Ê½
 	; SAVE_TO_MAIN_DIALOG_GROUP : »ñÈ¡µ±Ç°²¥·ÅµÄ¸èµ¥
 
-	LOCAL BytesRead : dword ; ---
-	LOCAL handler_saved : dword ; ---
+	LOCAL BytesRead : dword 
+	LOCAL handler_saved : dword 
 	LOCAL lpstrLength : dword
 
 	LOCAL counter : dword
@@ -1019,7 +1001,6 @@ CollectSongPath proc,
 	cld
 	rep movsb
 	ret
-
 CollectSongPath endp
 
 ShowMainDialogView proc,
@@ -1332,7 +1313,6 @@ SelectPlaySong proc,; ÉèÖÃµ±Ç°ÕýÔÚ²¥·ÅµÄ¸èÇú
 		invoke SetInitLyric
 		invoke GetFileTitle, addr currentPlaySingleSongPath, addr readSongNameStr, MAX_SONG_NAME_LEN - 1
 		invoke SetWindowText, staticWin, addr readSongNameStr
-	; readSongNameStr
 	.endif
 	ret
 SelectPlaySong endp
@@ -1347,7 +1327,6 @@ DeleteTargetSong proc,
 	local selectIndex : dword
 	local playIndex : dword
 	local playIndexadd1 : dword
-;	index : dword
 
 ; ·ÖÎªÈýÖÖÉ¾³ýµÄmethod: 
 ; DELETE_ALL_SONGS_IN_GROUP	:É¾³ýsongGroup(dword)ÀïµÄËùÓÐ¸è, ÐèÒªÖ¸¶¨songGroup
@@ -1537,33 +1516,14 @@ LButtonDown proc,
 	local @mouseY : word
 	
 	mov eax, lParam
-;	mov	hiword, 
 	mov @mouseX, ax
 	shrd eax, ebx, 16
 	mov @mouseY, ax
-	; ÔÚÉÏ°ë²¿·ÖÍÏ¶¯´°¿Ú
-	.if @mouseY < 50
+	.if @mouseY < 50 ; ÔÚÉÏ°ë²¿·ÖÍÏ¶¯´°¿Ú
 		invoke SendMessage, hWin, WM_NCLBUTTONDOWN, HTCAPTION, 0
 	.endif
 	ret
 LButtonDown endp
-
-; ¼üÅÌ°´ÏÂÊÂ¼þ´¦Àí
-KeyDown proc, 
-	hWin : dword, 
-	wParam : dword, 
-	lParam : dword
-	.if wParam == VK_SPACE
-		ret
-	.endif
-	ret
-KeyDown endp
-;// ¼üÅÌ°´ÏÂÊÂ¼þ´¦Àíº¯Êý
-;void KeyDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {
-; switch (wParam) {
-; case VK_UP:
-;  keyUpDown = true;
-;  break;
 
 ; ½çÃæ²¼¾Öº¯Êý
 InitUI proc, 
@@ -1722,14 +1682,11 @@ ChangeTheme proc,
 	mov curTheme, ax
 
 	; ÏÔÊ¾±³¾°²¢°Ñµ±Ç°ÉèÖÃÎª²»¿É¼û
-	.if curTheme == 0
-		; Òþ²Øµ±Ç°±³¾°
+	.if curTheme == 0 ; Òþ²Øµ±Ç°±³¾°
 		invoke GetDlgItem, hWin, IDC_BACKGROUND
-		invoke ShowWindow, eax, SW_SHOW
-		; ÏÔÊ¾Ä¿±ê±³¾°
+		invoke ShowWindow, eax, SW_SHOW ; ÏÔÊ¾Ä¿±ê±³¾°
 		invoke GetDlgItem, hWin, IDC_BACKGROUND_ORANGE
-		invoke ShowWindow, eax, SW_HIDE
-		; ¶ÔÓ¦Í¼±ê·ÅÖÃµ½¿Ø¼þ
+		invoke ShowWindow, eax, SW_HIDE ; ¶ÔÓ¦Í¼±ê·ÅÖÃµ½¿Ø¼þ
 		.if playState == STATE_PLAY
 			invoke SendDlgItemMessage, hWin, IDC_PLAY_BUTTON, BM_SETIMAGE, IMAGE_ICON, ico_Suspend_Blue
 		.else
@@ -1753,8 +1710,7 @@ ChangeTheme proc,
 		invoke SendDlgItemMessage, hWin, IDC_FAST_BACKWARD, BM_SETIMAGE, IMAGE_ICON, ico_Backward_Blue
 		invoke SendDlgItemMessage, hWin, IDC_FAST_FORWARD, BM_SETIMAGE, IMAGE_ICON, ico_Forward_Blue
 		invoke SendDlgItemMessage, hWin, IDC_THEME, BM_SETIMAGE, IMAGE_ICON, ico_Change_Blue
-		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Blue
-		; ¹Ì¶¨±³¾°bitmap
+		invoke SendDlgItemMessage, hWin, IDC_CLOSE, BM_SETIMAGE, IMAGE_ICON, ico_Cross_Blue ; ¹Ì¶¨±³¾°bitmap
 		invoke GetWindowRect, hWin, addr rect
 		invoke GetDlgItem, hWin, IDC_BACKGROUND
 		mov	ecx, rect.right
@@ -1804,49 +1760,8 @@ ChangeTheme proc,
 
 	; »ñµÃ²¢µ÷Õû´°¿ÚÎ»ÖÃ
 	invoke MoveWindow, eax, 0, 0, ecx, ebx, 0
-;	invoke SendMessage, hWin, WM_SIZE, SIZE_MINIMIZED, NULL
 	ret
 ChangeTheme endp
-
-; »æÍ¼º¯Êý
-Paint proc, 
-	hWin : dword
-	local @ps : PAINTSTRUCT
-	local @hdc_window : HDC
-	local @hdc_memBuffer : HDC
-	local @hdc_loadBmp : HDC
-	local @blankBmp : HBITMAP
-	
-	; ×¼±¸»­¼ÒºÍ»­²¼
-	invoke RtlZeroMemory, addr @ps, sizeof @ps ; ½«@ps½á¹¹ÌåÇå0
-	invoke BeginPaint, hWin, addr @ps
-	mov @hdc_window, eax
-	invoke CreateCompatibleDC, @hdc_window
-	mov @hdc_memBuffer, eax
-	invoke CreateCompatibleDC, @hdc_window
-	mov @hdc_loadBmp, eax
-
-	; ³õÊ¼»¯»º´æ
-	invoke CreateCompatibleBitmap, @hdc_window, WINDOW_WIDTH, WINDOW_HEIGHT
-	mov @blankBmp, eax
-	invoke SelectObject, @hdc_memBuffer, @blankBmp
-
-	; »æÖÆ¸÷ÖÖ×ÊÔ´µ½»º´æ
-	; invoke SelectObject, @hdc_loadBmp, <target Bitmap>
-	; invoke BitBlt, @hdc_memBuffer, posX, posY, width, height, @hdc_loadBmp, 0, 0, SRCCOPY
-	
-	; ½«»º´æÐÅÏ¢»æÖÆµ½ÆÁÄ»
-	invoke BitBlt, @hdc_window, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdc_memBuffer, 0, 0, SRCCOPY
-
-	; »ØÊÕ×ÊÔ´ËùÕ¼ÄÚ´æ
-	invoke DeleteObject, @blankBmp
-	invoke DeleteDC, @hdc_memBuffer
-	invoke DeleteDC, @hdc_loadBmp
-
-	; ½áÊø»æÖÆ
-	invoke EndPaint, hWin, addr @ps
-	ret
-Paint endp
 
 PauseCurrentSong proc
 	.if playState == STATE_PAUSE ; ÈôÒÑÔÝÍ£Ôò·µ»Ø
@@ -1903,12 +1818,10 @@ ResumeCurrentSong endp
 
 PlayCurrentSong proc,
     hWin : dword
-	; test
 	invoke CheckPlayCurrentSong, hWin
 	.if eax == 0
 		ret
 	.endif
-	; end test
 
 	.if playState != STATE_STOP
 		invoke mciExecute, ADDR cmd_close
@@ -2201,11 +2114,8 @@ GetPreNxtSong proc,
 		ret
 	.endif
 
-;	invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCURSEL, 0, 0 
-;	mov	indexToPlay, eax ; indexToPlay = i 
 	push currentPlaySingleSongIndex
 	pop indexToPlay
-;	mov	currentPlaySingleIndex, indexToPlay
 
 	.if modePlay == MODE_LOOP
 		invoke SendDlgItemMessage, hWin, IDC_MAIN_GROUP, LB_GETCOUNT, 0, 0
@@ -2282,7 +2192,6 @@ ChangeMode endp
 FindLyricAtTime proc,
 	timeStamp : dword
 	.if hasLyric == LYRIC_NOT_EXIST
-;		invoke RtlZeroMemory, addr currentPlayLyricStr, sizeof currentPlayLyricStr
 		ret
 	.endif
 	mov eax, currentLyricTime
@@ -2411,7 +2320,6 @@ ReadLyric proc
 	add esi, size lyric
 	mov lyricSavePos, esi
 	add lyricCounter, 1
-;	invoke CollectLyricStr, 
 
 	invoke SetFileApisToANSI
 	invoke CreateFile, offset currentPlayLyricPath, GENERIC_READ,0 ,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0
@@ -2470,20 +2378,20 @@ FIND_MILLISECOND:
 		jmp FIND_MILLISECOND
 	.endif
 
-	push eax
+	push eax ; ½«·ÖÖÓ×ª»¯Îªmillisecond
 	mov eax, timeMinute
 	mul const60
 	mul const1000
 	add timeMillisecond, eax
-	mov eax,timeSecond
+	mov eax,timeSecond ; ½«ÃëÖÓ×ª»¯Îªmillisecond
 	mul const1000
 	add timeMillisecond, eax
 	pop eax
 
 	push esi
 	mov esi, lyricSavePos
-	push timeMillisecond
-	pop (lyric ptr [esi]).timeStamp
+	push timeMillisecond 
+	pop (lyric ptr [esi]).timeStamp ; ¼ÇÂ¼Ê±¼ä´Á
 	mov esi, lyricSavePos
 	add esi, size dword
 	mov strPos, esi
@@ -2652,7 +2560,7 @@ LocalSearch proc,
 	LOCAL index : dword
 	mov eax, currentPlayGroup
 	.if currentPlayGroup == DEFAULT_SONG_GROUP ; Èç¹ûµ±Ç°Î´Ñ¡Ôñ¸èµ¥£¬ÌáÊ¾´íÎó
-		;invoke MessageBox, hWin, addr addNone, 0, MB_OK
+		invoke MessageBox, hWin, addr findNone, 0, MB_OK
 		ret
 	.endif
 
